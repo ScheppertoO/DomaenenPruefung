@@ -24,15 +24,15 @@ $ouStructure = @(
 )
 
 foreach ($ou in $ouStructure) {
-    if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$ou'")) {
+    if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$($ou)'")) {
         $ouName = $ou.Split(',')[0] -replace 'OU=', ''
-        New-ADOrganizationalUnit -Name $ouName -Path "OU=Technotrans,DC=Technotrans,DC=dom"
+        New-ADOrganizationalUnit -Name $ouName -Path ($ou -replace '^OU=.*?,', '')
     }
 }
 
 New-ADOrganizationalUnit -Name Gruppen -Path "OU=Technotrans,DC=Technotrans,DC=dom"
 New-ADOrganizationalUnit -Name Clients -Path "OU=Technotrans,DC=Technotrans,DC=dom"
-New-ADOrganizationalUnit -Name GL-Gruppen Path "OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
+New-ADOrganizationalUnit -Name GL-Gruppen -Path "OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
 New-ADOrganizationalUnit -Name DL-Gruppen -Path "OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
 
 <# Alter Weg 
