@@ -1,4 +1,4 @@
-$vmNames = @("FirstVM", "SecondVM", "ThirdVM") # Fügen Sie hier die Namen aller VMs ein
+$vmNames = @("FirstVM", "SecondVM", "ThirdVM") # Fuegen Sie hier die Namen aller VMs ein
 $username = "Administrator"
 $password = "Password1"
 
