@@ -31,15 +31,15 @@ foreach ($ou in $ouStructure) {
 }
 
 New-ADOrganizationalUnit -Name Gruppen -Path "OU=Technotrans,DC=Technotrans,DC=dom"
-New-ADOrganizationalUnit -Name Clients -Path "OU=Technotrans,DC=Technotrans,DC=dom"
+#New-ADOrganizationalUnit -Name Clients -Path "OU=Technotrans,DC=Technotrans,DC=dom"
 New-ADOrganizationalUnit -Name GL-Gruppen -Path "OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
 New-ADOrganizationalUnit -Name DL-Gruppen -Path "OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
 
 # Benutzerberechtigungen definieren
 $userPermissionsArray = @(
     @{Name="Ute Unten"; Permissions=@("DL-Versand-Read", "DL-Versand-Write")},
-    @{Name="Max Mitte"; Permissions=@("DL-Vertrieb-Read")},
-    @{Name="Olaf Oben"; Permissions=@("DL-Geschaeftsfuehrung-Full")}
+    @{Name="Max Mitte"; Permissions=@("DL-Vertrieb-Read", "DL-Vertrieb-Write")},
+    @{Name="Olaf Oben"; Permissions=@("DL-Geschaeftsfuehrung-Read", "DL-Geschaeftsfuehrung-Write", "DL-Versand-Read", "DL-Versand-Write")}
 )
 
 # Konvertiere Benutzerberechtigungen in ein Hashtable für schnelleren Zugriff
@@ -51,7 +51,7 @@ foreach ($entry in $userPermissionsArray) {
 # Lokale Domaenengruppen erstellen (nur Read, Write, Full pro Abteilung)
 $departments = @("Buchhaltung", "Marketing", "IT", "Versand-Abt", "Vertrieb-Abt", "Gefue-Abt")
 foreach ($department in $departments) {
-    foreach ($suffix in @("Read", "Write", "Full")) {
+    foreach ($suffix in @("Read", "Write"<#, "Full"#>)) {
         $groupName = "DL-$department-$suffix"
         Write-Host "Pruefe lokale Domaenengruppe: $groupName"
         if (-not (Get-ADGroup -Filter {Name -eq $groupName})) {
@@ -84,17 +84,15 @@ foreach ($user in $users) {
     
     if (-not (Get-ADUser -Filter {SamAccountName -eq $username})) {
         Write-Host "Erstelle Benutzer: $cleanFullName"
-        New-ADUser @{
-            Name               = $cleanFullName
-            GivenName          = $firstName
-            Surname            = $lastName
-            SamAccountName     = $username
-            UserPrincipalName  = $userPrincipalName
-            Path               = $ou
-            AccountPassword    = (ConvertTo-SecureString -AsPlainText $password -Force)
-            Enabled            = $true
-            PasswordNeverExpires = $true
-        }
+        New-ADUser -Name $cleanFullName `
+                  -GivenName $firstName `
+                  -Surname $lastName `
+                  -SamAccountName $username `
+                  -UserPrincipalName $userPrincipalName `
+                  -Path $ou `
+                  -AccountPassword (ConvertTo-SecureString -AsPlainText $password -Force) `
+                  -Enabled $true `
+                  -PasswordNeverExpires $true
     } else {
         Write-Host "Benutzer $username existiert bereits."
     }
@@ -158,6 +156,19 @@ foreach ($department in $departmentsForNesting) {
         if ((Get-ADGroup -Filter {Name -eq $dlGroup}) -and (Get-ADGroup -Filter {Name -eq $glGroup})) {
             Write-Host "Fuege DL Gruppe $dlGroup zur GL Gruppe $glGroup hinzu"
             Add-ADGroupMember -Identity $glGroup -Members $dlGroup
+        }
+    }
+}
+
+# Neue Schleife: GL Gruppen werden in die entsprechenden DL Gruppen hinzugefügt
+$departmentsForNesting = @("Buchhaltung", "Marketing", "IT", "Versand-Abt", "Vertrieb-Abt", "Gefue-Abt")
+foreach ($department in $departmentsForNesting) {
+    $glGroup = "$department-Group"
+    foreach ($suffix in @("Read", "Write", "Full")) {
+        $dlGroup = "DL-$department-$suffix"
+        if ((Get-ADGroup -Filter {Name -eq $dlGroup}) -and (Get-ADGroup -Filter {Name -eq $glGroup})) {
+            Write-Host "Fuege GL Gruppe $glGroup als Mitglied zu DL Gruppe $dlGroup hinzu"
+            Add-ADGroupMember -Identity $dlGroup -Members $glGroup
         }
     }
 }
