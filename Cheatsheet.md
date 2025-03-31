@@ -1,8 +1,8 @@
-# Anleitung: Änderungen speichern und mergen mit GitHub
+# 💻 Anleitung: Änderungen speichern und mergen mit GitHub
 
-## Schritte im Detail
+## 🛠️ Schritte im Detail
 
-### 1. Änderungen lokal committen
+### 1️⃣ Änderungen lokal committen
 
 Speichere deine Änderungen in deinem aktuellen Branch:
 
@@ -11,7 +11,9 @@ git add .
 git commit -m "Beschreibung der Änderungen"
 ```
 
-### 2. Zum Haupt-Branch (`main`) wechseln
+---
+
+### 2️⃣ Zum Haupt-Branch (`main`) wechseln
 
 Wechsle zunächst zum Haupt-Branch:
 
@@ -19,7 +21,9 @@ Wechsle zunächst zum Haupt-Branch:
 git checkout main
 ```
 
-### 3. Haupt-Branch aktualisieren
+---
+
+### 3️⃣ Haupt-Branch aktualisieren
 
 Hole die neuesten Änderungen vom Remote-Repository (`origin`) auf deinen lokalen `main`-Branch:
 
@@ -27,7 +31,9 @@ Hole die neuesten Änderungen vom Remote-Repository (`origin`) auf deinen lokale
 git pull origin main
 ```
 
-### 4. Änderungen mergen
+---
+
+### 4️⃣ Änderungen mergen
 
 Führe die Änderungen deines Feature-Branches in den Haupt-Branch ein:
 
@@ -35,7 +41,9 @@ Führe die Änderungen deines Feature-Branches in den Haupt-Branch ein:
 git merge <feature-branch-name>
 ```
 
-### 5. Konflikte lösen (falls nötig)
+---
+
+### 5️⃣ Konflikte lösen (falls nötig)
 
 Falls es Merge-Konflikte gibt, bearbeite die betroffenen Dateien und markiere sie als gelöst:
 
@@ -44,7 +52,9 @@ git add <datei-name>
 git commit -m "Konflikte gelöst"
 ```
 
-### 6. Änderungen in das Remote-Repository hochladen
+---
+
+### 6️⃣ Änderungen in das Remote-Repository hochladen
 
 Lade die Änderungen vom Haupt-Branch ins Remote-Repository hoch:
 
@@ -54,7 +64,7 @@ git push origin main
 
 ---
 
-## Übersicht nützlicher Befehle
+## 📋 Übersicht nützlicher Befehle
 
 | **Befehl**                    | **Beschreibung**                                 |
 |-------------------------------|--------------------------------------------------|
