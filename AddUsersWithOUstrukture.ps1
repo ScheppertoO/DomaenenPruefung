@@ -65,18 +65,22 @@ foreach ($department in $departments) {
 
 # Benutzer anlegen und zu den entsprechenden Gruppen hinzufuegen
 foreach ($user in $users) {
-    $username = $user.Name -replace " ", "."
+    $cleanFullName = $user.Name.Trim()
+    $nameParts = $cleanFullName.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)
+    $firstName = $nameParts[0].Trim()
+    $lastName = if ($nameParts.Count -ge 2) { $nameParts[1].Trim() } else { "" }
+    $username = ("$firstName$lastName").Trim()  # Änderung: Kein Punkt
+     
     $password = "Password1"  # Sicherste Passwort der Welt
     $ou = $user.OU
-    $userPrincipalName = "$username@technostrans.dom"
-
-    # Erstelle den Benutzer nur, falls er noch nicht existiert
+    $userPrincipalName = "$username@technotrans.dom"
+    
     if (-not (Get-ADUser -Filter {SamAccountName -eq $username})) {
-        Write-Host "Erstelle Benutzer: $($user.Name)"
+        Write-Host "Erstelle Benutzer: $cleanFullName"
         New-ADUser @{
-            Name               = $user.Name
-            GivenName          = $user.Name.Split(" ")[0]
-            Surname            = $user.Name.Split(" ")[1]
+            Name               = $cleanFullName
+            GivenName          = $firstName
+            Surname            = $lastName
             SamAccountName     = $username
             UserPrincipalName  = $userPrincipalName
             Path               = $ou
@@ -87,32 +91,36 @@ foreach ($user in $users) {
     } else {
         Write-Host "Benutzer $username existiert bereits."
     }
-    # Hole das AD-Benutzerobjekt anhand des SamAccountNames
     $adUser = Get-ADUser -Filter {SamAccountName -eq $username}
-
-    # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "Versand-Group"
-    $deptGroup = "$($user.Department)-Group"
-    if (-not (Get-ADGroup -Filter {Name -eq $deptGroup})) {
-         Write-Host "Erstelle Gruppe: $deptGroup"
-         New-ADGroup -Name $deptGroup -GroupScope Global -Path "OU=GL-Gruppen,OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
-    }
-
-    # Benutzer der Abteilungsgruppe hinzufügen
-    Write-Host "Fuege Benutzer $username zu Gruppe $deptGroup hinzu"
-    Add-ADGroupMember -Identity $deptGroup -Members $adUser
-
-    # Benutzerberechtigungen auslesen und zu den entsprechenden Gruppen hinzufuegen
-    if ($userPermissions.ContainsKey($user.Name)) {
-        foreach ($permissionGroup in $userPermissions[$user.Name]) {
-            Write-Host "Fuege Benutzer $username zu Gruppe $permissionGroup hinzu"
-            if (Get-ADGroup -Filter {Name -eq $permissionGroup}) {
-                Add-ADGroupMember -Identity $permissionGroup -Members $adUser
-            } else {
-                Write-Host "Gruppe $permissionGroup existiert nicht. Ueberspringe Hinzufuegen."
-            }
+    
+    if ($adUser) {
+        # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "Versand-Group"
+        $deptGroup = "$($user.Department)-Group"
+        if (-not (Get-ADGroup -Filter {Name -eq $deptGroup})) {
+            Write-Host "Erstelle Gruppe: $deptGroup"
+            New-ADGroup -Name $deptGroup -GroupScope Global -Path "OU=GL-Gruppen,OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
         }
-    } else {
-        Write-Host "Keine spezifischen Berechtigungen fuer Benutzer $username gefunden."
+    
+        # Benutzer der Abteilungsgruppe hinzufügen
+        Write-Host "Fuege Benutzer $username zu Gruppe $deptGroup hinzu"
+        Add-ADGroupMember -Identity $deptGroup -Members $adUser
+    
+        # Benutzerberechtigungen auslesen und zu den entsprechenden Gruppen hinzufuegen
+        if ($userPermissions.ContainsKey($user.Name)) {
+            foreach ($permissionGroup in $userPermissions[$user.Name]) {
+                Write-Host "Fuege Benutzer $username zu Gruppe $permissionGroup hinzu"
+                if (Get-ADGroup -Filter {Name -eq $permissionGroup}) {
+                    Add-ADGroupMember -Identity $permissionGroup -Members $adUser
+                } else {
+                    Write-Host "Gruppe $permissionGroup existiert nicht. Ueberspringe Hinzufuegen."
+                }
+            }
+        } else {
+            Write-Host "Keine spezifischen Berechtigungen fuer Benutzer $username gefunden."
+        }
+    }
+    else {
+        Write-Host "Benutzererstellung fehlgeschlagen für $username. Gruppenzuordnung wird uebersprungen."
     }
 }
 
