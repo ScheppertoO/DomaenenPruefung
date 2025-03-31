@@ -87,6 +87,8 @@ foreach ($user in $users) {
     } else {
         Write-Host "Benutzer $username existiert bereits."
     }
+    # Hole das AD-Benutzerobjekt anhand des SamAccountNames
+    $adUser = Get-ADUser -Filter {SamAccountName -eq $username}
 
     # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "Versand-Group"
     $deptGroup = "$($user.Department)-Group"
@@ -97,14 +99,14 @@ foreach ($user in $users) {
 
     # Benutzer der Abteilungsgruppe hinzufügen
     Write-Host "Fuege Benutzer $username zu Gruppe $deptGroup hinzu"
-    Add-ADGroupMember -Identity $deptGroup -Members $username
+    Add-ADGroupMember -Identity $deptGroup -Members $adUser
 
     # Benutzerberechtigungen auslesen und zu den entsprechenden Gruppen hinzufuegen
     if ($userPermissions.ContainsKey($user.Name)) {
         foreach ($permissionGroup in $userPermissions[$user.Name]) {
             Write-Host "Fuege Benutzer $username zu Gruppe $permissionGroup hinzu"
             if (Get-ADGroup -Filter {Name -eq $permissionGroup}) {
-                Add-ADGroupMember -Identity $permissionGroup -Members $username
+                Add-ADGroupMember -Identity $permissionGroup -Members $adUser
             } else {
                 Write-Host "Gruppe $permissionGroup existiert nicht. Ueberspringe Hinzufuegen."
             }
