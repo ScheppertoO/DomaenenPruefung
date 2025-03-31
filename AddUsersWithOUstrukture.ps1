@@ -70,10 +70,17 @@ foreach ($user in $users) {
     $firstName = $nameParts[0].Trim()
     $lastName = if ($nameParts.Count -ge 2) { $nameParts[1].Trim() } else { "" }
     $username = ("$firstName$lastName").Trim()  # Änderung: Kein Punkt
-     
     $password = "Password1"  # Sicherste Passwort der Welt
     $ou = $user.OU
     $userPrincipalName = "$username@technotrans.dom"
+    
+    # Debug-Ausgabe für Variablen vor Benutzererstellung
+    Write-Host "=== DEBUG: Variablen für Benutzer $cleanFullName ===" -ForegroundColor Cyan
+    Write-Host "firstName: $firstName" -ForegroundColor Gray
+    Write-Host "lastName: $lastName" -ForegroundColor Gray
+    Write-Host "username: $username" -ForegroundColor Gray
+    Write-Host "ou: $ou" -ForegroundColor Gray
+    Write-Host "userPrincipalName: $userPrincipalName" -ForegroundColor Gray
     
     if (-not (Get-ADUser -Filter {SamAccountName -eq $username})) {
         Write-Host "Erstelle Benutzer: $cleanFullName"
@@ -93,9 +100,27 @@ foreach ($user in $users) {
     }
     $adUser = Get-ADUser -Filter {SamAccountName -eq $username}
     
+    # Debug-Ausgabe für $adUser
+    Write-Host "=== DEBUG: ADUser Objekt ===" -ForegroundColor Cyan
+    Write-Host "adUser: $adUser" -ForegroundColor Gray
+    if ($adUser) {
+        Write-Host "  DistinguishedName: $($adUser.DistinguishedName)" -ForegroundColor Gray
+        Write-Host "  SamAccountName: $($adUser.SamAccountName)" -ForegroundColor Gray
+        Write-Host "  UserPrincipalName: $($adUser.UserPrincipalName)" -ForegroundColor Gray
+        Write-Host "  Enabled: $($adUser.Enabled)" -ForegroundColor Gray
+    } else {
+        Write-Host "  adUser ist NULL oder leer!" -ForegroundColor Red
+    }
+    
     if ($adUser) {
         # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "Versand-Group"
         $deptGroup = "$($user.Department)-Group"
+        
+        # Debug-Ausgabe für Gruppenvariablen
+        Write-Host "=== DEBUG: Gruppenvariablen ===" -ForegroundColor Cyan
+        Write-Host "deptGroup: $deptGroup" -ForegroundColor Gray
+        Write-Host "Department: $($user.Department)" -ForegroundColor Gray
+        
         if (-not (Get-ADGroup -Filter {Name -eq $deptGroup})) {
             Write-Host "Erstelle Gruppe: $deptGroup"
             New-ADGroup -Name $deptGroup -GroupScope Global -Path "OU=GL-Gruppen,OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
