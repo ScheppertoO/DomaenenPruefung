@@ -1,3 +1,27 @@
+<# Provision the physical disk for the fileserver (Windows Gen2, GPT, Basic)
+$driveLetter = 'E'
+# Find a disk that is online and not yet initialized
+$disk = Get-Disk | Where-Object { $_.IsOffline -eq $false -and $_.PartitionStyle -eq 'RAW' } | Select-Object -First 1
+if ($disk) {
+    Write-Host "Initializing Disk Number $($disk.Number) as GPT..."
+    Initialize-Disk -Number $disk.Number -PartitionStyle GPT -Confirm:$false
+
+    Write-Host "Creating new partition using maximum available space..."
+    $partition = New-Partition -DiskNumber $disk.Number -UseMaximumSize -AssignDriveLetter -Confirm:$false
+
+    Write-Host "Formatting partition as NTFS and labeling it 'Firmendaten'..."
+    Format-Volume -Partition $partition -FileSystem NTFS -NewFileSystemLabel "Firmendaten" -Confirm:$false
+
+    Write-Host "Assigning drive letter $driveLetter to the new partition..."
+    Set-Partition -DiskNumber $disk.Number -PartitionNumber $partition.PartitionNumber -NewDriveLetter $driveLetter
+
+    Write-Host "Disk provisioned and available as drive $driveLetter:"
+}
+else {
+    Write-Host "No suitable uninitialized disk found for provisioning."
+}
+#>
+
 # Define folder paths
 $basePath = "E:\Firmendaten"
 $homePath = "E:\Home"
