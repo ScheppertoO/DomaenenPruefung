@@ -49,7 +49,7 @@ foreach ($entry in $userPermissionsArray) {
 }
 
 # Lokale Domaenengruppen erstellen (nur Read, Write, Full pro Abteilung)
-$departments = @("Buchhaltung", "Marketing", "IT", "Versand-Abt", "Vertrieb-Abt", "Gefue-Abt")
+$departments = @(<#"Buchhaltung", "Marketing", "IT",#> "Versand-Abt", "Vertrieb-Abt", "Gefue-Abt")
 foreach ($department in $departments) {
     foreach ($suffix in @("Read", "Write"<#, "Full"#>)) {
         $groupName = "DL-$department-$suffix"
