@@ -5,7 +5,7 @@ $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 $username = $currentUser.Split('\')[1]
 
 # Home-Verzeichnis einbinden für alle Benutzer
-New-PSDrive -Name "H" -PSProvider FileSystem -Root "\\Server\Home" -Persist
+New-PSDrive -Name "H" -PSProvider FileSystem -Root "\\Server\Home"  
 
 # Bestimme Abteilungsverzeichnis basierend auf Benutzername
 $departmentPath = "\\Server\Firmendaten"
@@ -21,6 +21,6 @@ elseif ($username -eq "UteUnten") {
 }
 
 # Abteilungs-Verzeichnis einbinden
-New-PSDrive -Name "X" -PSProvider FileSystem -Root $departmentPath -Persist
+New-PSDrive -Name "X" -PSProvider FileSystem -Root $departmentPath  
 
 Write-Host "Netzlaufwerke für $username wurden erfolgreich eingebunden."
