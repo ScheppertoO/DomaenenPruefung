@@ -37,9 +37,9 @@ New-ADOrganizationalUnit -Name DL-Gruppen -Path "OU=Gruppen,OU=Technotrans,DC=Te
 
 # Benutzerberechtigungen definieren
 $userPermissionsArray = @(
-    @{Name="Ute Unten"; Permissions=@("DL-Versand-Read", "DL-Versand-Write")},
-    @{Name="Max Mitte"; Permissions=@("DL-Vertrieb-Read")},
-    @{Name="Olaf Oben"; Permissions=@("DL-Geschaeftsfuehrung-Full")}
+    @{Name="Ute Unten"; Permissions=@("DL-Versand-Daten-R")},
+    @{Name="Max Mitte"; Permissions=@("DL-Vertrieb-Daten-AE")},
+    @{Name="Olaf Oben"; Permissions=@("DL-Gefue-Daten-AE", "DL-Versand-Daten-R")}
 )
 
 # Konvertiere Benutzerberechtigungen in ein Hashtable für schnelleren Zugriff
@@ -49,9 +49,9 @@ foreach ($entry in $userPermissionsArray) {
 }
 
 # Lokale Domaenengruppen erstellen (nur Read, Write, Full pro Abteilung)
-$departments = @(<#"Buchhaltung", "Marketing", "IT",#> "Versand-Abt", "Vertrieb-Abt", "Gefue-Abt")
+$departments = @(<#"Buchhaltung", "Marketing", "IT",#>"Versand", "Vertrieb", "Gefue", "Shared")
 foreach ($department in $departments) {
-    foreach ($suffix in @("Read", "Write", "Full")) {
+    foreach ($suffix in @("-Daten-L", "-Daten-AE")) {
         $groupName = "DL-$department-$suffix"
         Write-Host "Pruefe lokale Domaenengruppe: $groupName"
         if (-not (Get-ADGroup -Filter {Name -eq $groupName})) {
@@ -94,8 +94,8 @@ foreach ($user in $users) {
     $adUser = Get-ADUser -Filter {SamAccountName -eq $username}
     
     if ($adUser) {
-        # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "Versand-Group"
-        $deptGroup = "$($user.Department)-Group"
+        # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "GL-Versand"
+        $deptGroup = "GL-$($user.Department)"
         if (-not (Get-ADGroup -Filter {Name -eq $deptGroup})) {
             Write-Host "Erstelle Gruppe: $deptGroup"
             New-ADGroup -Name $deptGroup -GroupScope Global -Path "OU=GL-Gruppen,OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
@@ -125,10 +125,10 @@ foreach ($user in $users) {
 }
 
 # Neue Schleife zum Hinzufuegen der DL Gruppen als Mitglieder der entsprechenden GL Gruppen
-$departmentsForNesting = @("Buchhaltung", "Marketing", "IT", "Versand-Abt", "Vertrieb-Abt", "Gefue-Abt")
+$departmentsForNesting = @("Versand", "Vertrieb", "Gefue", "Shared")
 foreach ($department in $departmentsForNesting) {
-    $glGroup = "$department-Group"
-    foreach ($suffix in @("Read", "Write")) {
+    $glGroup = "GL-$department"
+    foreach ($suffix in @("-Daten-AE", "-Daten-L")) {
         $dlGroup = "DL-$department-$suffix"
         if ((Get-ADGroup -Filter {Name -eq $dlGroup}) -and (Get-ADGroup -Filter {Name -eq $glGroup})) {
             Write-Host "Fuege DL Gruppe $dlGroup zur GL Gruppe $glGroup hinzu"
