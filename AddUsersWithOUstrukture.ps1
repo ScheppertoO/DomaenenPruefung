@@ -149,7 +149,7 @@ foreach ($user in $users) {
 $departmentsForNesting = @("Versand", "Vertrieb", "Gefue", "Shared")
 foreach ($department in $departmentsForNesting) {
     $glGroup = "GL-$department"
-    foreach ($suffix in @("-Daten-AE", "-Daten-L")) {
+    foreach ($suffix in @("Daten-AE", "Daten-L")) {
         $dlGroup = "DL-$department-$suffix"
         if ((Get-ADGroup -Filter {Name -eq $dlGroup}) -and (Get-ADGroup -Filter {Name -eq $glGroup})) {
             Write-Host "Füge GL Gruppe $glGroup zur DL Gruppe $dlGroup hinzu"

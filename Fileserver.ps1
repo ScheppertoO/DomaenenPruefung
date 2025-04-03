@@ -1,6 +1,7 @@
 # Define folder paths
 $basePath = "E:\Firmendaten"
 $homePath = "E:\Home"
+$serverName = "SRV-2022-001"
 $folders = @(
     "$basePath",
     "$basePath\Gefue-Daten",
@@ -57,18 +58,3 @@ foreach ($perm in $permissions) {
     Set-Acl -Path $perm.Path -AclObject $acl
     Write-Host "Set $($perm.Access) permission for $($perm.User) on $($perm.Path)"
 }
-
-# Enable access-based enumeration
-Import-Module ServerManager
-Install-WindowsFeature FS-Resource-Manager
-Set-SmbShare -Name "Firmendaten" -FolderEnumerationMode AccessBased
-
-# Configure drive mappings
-$users = @("Olaf", "Max", "Ute")
-foreach ($user in $users) {
-    New-PSDrive -Name "H" -PSProvider FileSystem -Root $homePath -Persist -Scope Global -Credential (Get-Credential "DOMAIN\$user")
-    Write-Host "Mapped H: drive for $user"
-}
-
-New-PSDrive -Name "X" -PSProvider FileSystem -Root $basePath -Persist -Scope Global
-Write-Host "Mapped X: drive for all users"
