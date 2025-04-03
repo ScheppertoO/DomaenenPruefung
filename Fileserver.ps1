@@ -1,27 +1,3 @@
-<# Provision the physical disk for the fileserver (Windows Gen2, GPT, Basic)
-$driveLetter = 'E'
-# Find a disk that is online and not yet initialized
-$disk = Get-Disk | Where-Object { $_.IsOffline -eq $false -and $_.PartitionStyle -eq 'RAW' } | Select-Object -First 1
-if ($disk) {
-    Write-Host "Initializing Disk Number $($disk.Number) as GPT..."
-    Initialize-Disk -Number $disk.Number -PartitionStyle GPT -Confirm:$false
-
-    Write-Host "Creating new partition using maximum available space..."
-    $partition = New-Partition -DiskNumber $disk.Number -UseMaximumSize -AssignDriveLetter -Confirm:$false
-
-    Write-Host "Formatting partition as NTFS and labeling it 'Firmendaten'..."
-    Format-Volume -Partition $partition -FileSystem NTFS -NewFileSystemLabel "Firmendaten" -Confirm:$false
-
-    Write-Host "Assigning drive letter $driveLetter to the new partition..."
-    Set-Partition -DiskNumber $disk.Number -PartitionNumber $partition.PartitionNumber -NewDriveLetter $driveLetter
-
-    Write-Host "Disk provisioned and available as drive $driveLetter:"
-}
-else {
-    Write-Host "No suitable uninitialized disk found for provisioning."
-}
-#>
-
 # Define folder paths
 $basePath = "E:\Firmendaten"
 $homePath = "E:\Home"
@@ -30,6 +6,7 @@ $folders = @(
     "$basePath\Gefue-Daten",
     "$basePath\Vertrieb-Daten",
     "$basePath\Versand-Daten",
+    "$basePath\Shared-Daten",
     $homePath
 )
 
@@ -49,21 +26,34 @@ $acl.SetAccessRuleProtection($true, $false) # Disable inheritance
 Set-Acl -Path $basePath -AclObject $acl
 
 # Restrict domain users from creating folders in Firmendaten
-$domainUsers = "DOMAIN\Domain Users"
+$domainPrefix = "Technotrans"  # Domain name for your environment
+$domainUsers = "$domainPrefix\Domain Users"
 $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($domainUsers, "CreateFolders", "Deny")))
 Set-Acl -Path $basePath -AclObject $acl
 
-# Assign specific permissions
+# Assign permissions to DL groups instead of directly to users
 $permissions = @(
-    @{Path="$basePath\Gefue-Daten"; User="DOMAIN\Olaf.Oben"; Access="Modify"},
-    @{Path="$basePath\Vertrieb-Daten"; User="DOMAIN\Max.Mitte"; Access="Modify"},
-    @{Path="$basePath\Versand-Daten"; User="DOMAIN\Ute.Unten"; Access="Read"},
-    @{Path="$basePath\Versand-Daten"; User="DOMAIN\Geschaeftsfuehrer"; Access="Modify"}
+    # Gefue permissions
+    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-L"; Access="Read"},
+    
+    # Vertrieb permissions
+    @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-L"; Access="Read"},
+    
+    # Versand permissions
+    @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-L"; Access="Read"},
+    
+    # Shared permissions for all AE groups
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Gefue-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Versand-Daten-AE"; Access="Modify"}
 )
 
 foreach ($perm in $permissions) {
     $acl = Get-Acl $perm.Path
-    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($perm.User, $perm.Access, "Allow")))
+    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($perm.User, $perm.Access, "ContainerInherit, ObjectInherit", "None", "Allow")))
     Set-Acl -Path $perm.Path -AclObject $acl
     Write-Host "Set $($perm.Access) permission for $($perm.User) on $($perm.Path)"
 }
