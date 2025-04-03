@@ -3,7 +3,7 @@ try {
     Import-Module ActiveDirectory -ErrorAction Stop
 }
 catch {
-    Write-Warning "ActiveDirectory Modul nicht verfuegbar – Dummy-Implementierungen werden genutzt."
+    Write-Warning "ActiveDirectory Modul nicht verfuegbar  Dummy-Implementierungen werden genutzt."
 }
 
 $ExecutionPolicy = Get-ExecutionPolicy
