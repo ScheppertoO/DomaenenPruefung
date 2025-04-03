@@ -31,7 +31,7 @@ foreach ($ou in $ouStructure) {
 }
 
 New-ADOrganizationalUnit -Name Gruppen -Path "OU=Technotrans,DC=Technotrans,DC=dom"
-#New-ADOrganizationalUnit -Name Clients -Path "OU=Technotrans,DC=Technotrans,DC=dom"
+New-ADOrganizationalUnit -Name Clients -Path "OU=Technotrans,DC=Technotrans,DC=dom"
 New-ADOrganizationalUnit -Name GL-Gruppen -Path "OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
 New-ADOrganizationalUnit -Name DL-Gruppen -Path "OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
 
@@ -70,11 +70,11 @@ foreach ($user in $users) {
     $firstName = $nameParts[0].Trim()
     $lastName = if ($nameParts.Count -ge 2) { $nameParts[1].Trim() } else { "" }
     $username = ("$firstName$lastName").Trim()  # Änderung: Kein Punkt
+     
     $password = "Password1"  # Sicherste Passwort der Welt
     $ou = $user.OU
     $userPrincipalName = "$username@technotrans.dom"
-    
-    # Debug-Ausgabe für Variablen vor Benutzererstellung
+
     Write-Host "=== DEBUG: Variablen für Benutzer $cleanFullName ===" -ForegroundColor Cyan
     Write-Host "firstName: $firstName" -ForegroundColor Gray
     Write-Host "lastName: $lastName" -ForegroundColor Gray
@@ -98,7 +98,6 @@ foreach ($user in $users) {
     }
     $adUser = Get-ADUser -Filter {SamAccountName -eq $username}
     
-    # Debug-Ausgabe für $adUser
     Write-Host "=== DEBUG: ADUser Objekt ===" -ForegroundColor Cyan
     Write-Host "adUser: $adUser" -ForegroundColor Gray
     if ($adUser) {
@@ -115,7 +114,8 @@ foreach ($user in $users) {
         $deptGroup = "GL-$($user.Department)"
         Write-Host "=== DEBUG: Gruppenvariablen ===" -ForegroundColor Cyan
         Write-Host "deptGroup: $deptGroup" -ForegroundColor Gray
-        Write-Host "Department: $($user.Department)" -ForegroundColor Gray
+        Write-Host "Department: $($user.Department)" -ForegroundColor Gray        # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "GL-Versand"
+        $deptGroup = "GL-$($user.Department)"
         if (-not (Get-ADGroup -Filter {Name -eq $deptGroup})) {
             Write-Host "Erstelle Gruppe: $deptGroup"
             New-ADGroup -Name $deptGroup -GroupScope Global -Path "OU=GL-Gruppen,OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
@@ -144,27 +144,15 @@ foreach ($user in $users) {
     }
 }
 
-# Neue Schleife zum Hinzufuegen der DL Gruppen als Mitglieder der entsprechenden GL Gruppen
+# Schleife zum Hinzufügen der GL Gruppen als Mitglieder der entsprechenden DL Gruppen
+# (Umkehrung der vorherigen Logik - Global Groups müssen in Domain Local Groups sein, nicht umgekehrt)
 $departmentsForNesting = @("Versand", "Vertrieb", "Gefue", "Shared")
 foreach ($department in $departmentsForNesting) {
     $glGroup = "GL-$department"
     foreach ($suffix in @("-Daten-AE", "-Daten-L")) {
         $dlGroup = "DL-$department-$suffix"
         if ((Get-ADGroup -Filter {Name -eq $dlGroup}) -and (Get-ADGroup -Filter {Name -eq $glGroup})) {
-            Write-Host "Fuege DL Gruppe $dlGroup zur GL Gruppe $glGroup hinzu"
-            Add-ADGroupMember -Identity $glGroup -Members $dlGroup
-        }
-    }
-}
-
-# Neue Schleife: GL Gruppen werden in die entsprechenden DL Gruppen hinzugefügt
-$departmentsForNesting = @("Buchhaltung", "Marketing", "IT", "Versand-Abt", "Vertrieb-Abt", "Gefue-Abt")
-foreach ($department in $departmentsForNesting) {
-    $glGroup = "$department-Group"
-    foreach ($suffix in @("Read", "Write", "Full")) {
-        $dlGroup = "DL-$department-$suffix"
-        if ((Get-ADGroup -Filter {Name -eq $dlGroup}) -and (Get-ADGroup -Filter {Name -eq $glGroup})) {
-            Write-Host "Fuege GL Gruppe $glGroup als Mitglied zu DL Gruppe $dlGroup hinzu"
+            Write-Host "Füge GL Gruppe $glGroup zur DL Gruppe $dlGroup hinzu"
             Add-ADGroupMember -Identity $dlGroup -Members $glGroup
         }
     }
