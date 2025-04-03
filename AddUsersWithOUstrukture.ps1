@@ -33,7 +33,7 @@ foreach ($ou in $ouStructure) {
         $ouName = $ou.Split(',')[0] -replace 'OU=', ''
         New-ADOrganizationalUnit -Name $ouName -Path ($ou -replace '^OU=.*?,', '')
     }
-}
+}########################################################DL-Firmendaten-L FEHLT######################################################
 
 New-ADOrganizationalUnit -Name Gruppen -Path "OU=Technotrans,DC=Technotrans,DC=dom"
 New-ADOrganizationalUnit -Name Clients -Path "OU=Technotrans,DC=Technotrans,DC=dom"
