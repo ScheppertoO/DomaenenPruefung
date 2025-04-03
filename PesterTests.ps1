@@ -1,3 +1,33 @@
+try {
+    Import-Module ActiveDirectory -ErrorAction Stop
+}
+catch {
+    Write-Warning "ActiveDirectory Modul nicht verfügbar – Dummy-Implementierungen werden genutzt."
+}
+
+# Dummy-Implementierungen für AD-Cmdlets, falls diese nicht auf dem System vorhanden sind.
+if (-not (Get-Command Get-ADOrganizationalUnit -ErrorAction SilentlyContinue)) {
+    function Get-ADOrganizationalUnit { }
+}
+if (-not (Get-Command New-ADOrganizationalUnit -ErrorAction SilentlyContinue)) {
+    function New-ADOrganizationalUnit { }
+}
+if (-not (Get-Command Get-ADUser -ErrorAction SilentlyContinue)) {
+    function Get-ADUser { }
+}
+if (-not (Get-Command New-ADUser -ErrorAction SilentlyContinue)) {
+    function New-ADUser { }
+}
+if (-not (Get-Command Get-ADGroup -ErrorAction SilentlyContinue)) {
+    function Get-ADGroup { }
+}
+if (-not (Get-Command New-ADGroup -ErrorAction SilentlyContinue)) {
+    function New-ADGroup { }
+}
+if (-not (Get-Command Add-ADGroupMember -ErrorAction SilentlyContinue)) {
+    function Add-ADGroupMember { }
+}
+
 Import-Module Pester
 
 Describe "AddUsersWithOUstrukture.ps1" {
@@ -5,19 +35,19 @@ Describe "AddUsersWithOUstrukture.ps1" {
     # Setze globale Mocks für alle AD-Cmdlets
     BeforeAll {
         # Mocks für OU-Erstellung
-        Mock -CommandName Get-ADOrganizationalUnit -MockWith { return @() }
-        Mock -CommandName New-ADOrganizationalUnit
+        Mock -CommandName Get-ADOrganizationalUnit -MockWith { return @() } -DisableCommandValidation
+        Mock -CommandName New-ADOrganizationalUnit -DisableCommandValidation
 
         # Mocks für Benutzer
-        Mock -CommandName Get-ADUser -MockWith { return $null }
-        Mock -CommandName New-ADUser
+        Mock -CommandName Get-ADUser -MockWith { return $null } -DisableCommandValidation
+        Mock -CommandName New-ADUser -DisableCommandValidation
 
         # Mocks für Gruppen
-        Mock -CommandName Get-ADGroup -MockWith { return @() }
-        Mock -CommandName New-ADGroup
+        Mock -CommandName Get-ADGroup -MockWith { return @() } -DisableCommandValidation
+        Mock -CommandName New-ADGroup -DisableCommandValidation
 
         # Mocks für Gruppenmitgliedschaft
-        Mock -CommandName Add-ADGroupMember
+        Mock -CommandName Add-ADGroupMember -DisableCommandValidation
     }
 
     Context "Beim Erstellen der OU-Struktur" {
@@ -31,7 +61,7 @@ Describe "AddUsersWithOUstrukture.ps1" {
             Assert-MockCalled -CommandName New-ADOrganizationalUnit -ParameterFilter { $Name -eq "Vertrieb-Abt" } -Exactly 1
             Assert-MockCalled -CommandName New-ADOrganizationalUnit -ParameterFilter { $Name -eq "Gefue-Abt" } -Exactly 1
             
-            # Erstelle zusätzliche OUs
+            # Überprüfe, ob zusätzliche OUs erstellt wurden
             Assert-MockCalled -CommandName New-ADOrganizationalUnit -ParameterFilter { $Name -eq "Gruppen" } -Exactly 1
             Assert-MockCalled -CommandName New-ADOrganizationalUnit -ParameterFilter { $Name -eq "Clients" } -Exactly 1
             Assert-MockCalled -CommandName New-ADOrganizationalUnit -ParameterFilter { $Name -eq "GL-Gruppen" } -Exactly 1
@@ -42,7 +72,7 @@ Describe "AddUsersWithOUstrukture.ps1" {
     Context "Beim Anlegen der Benutzer" {
         It "sollten Benutzer erstellt werden, wenn sie nicht existieren" {
             . "$PSScriptRoot\AddUsersWithOUstrukture.ps1"
-            # Da $users drei Einträge enthält, sollte New-ADUser 3-mal aufgerufen werden
+            # Angenommen, $users enthält 3 Einträge – prüfe, ob New-ADUser 3-mal aufgerufen wurde
             Assert-MockCalled -CommandName New-ADUser -Exactly 3
         }
     }
@@ -50,16 +80,18 @@ Describe "AddUsersWithOUstrukture.ps1" {
     Context "Beim Erstellen der Gruppen und Zuweisen von Mitgliedschaften" {
         It "sollten lokale Domaenengruppen erstellt werden" {
             . "$PSScriptRoot\AddUsersWithOUstrukture.ps1"
-            # Teste, ob New-ADGroup mindestens einmal aufgerufen wurde
+            # Prüfe, ob New-ADGroup mindestens einmal mit GroupScope DomainLocal aufgerufen wurde
             Assert-MockCalled -CommandName New-ADGroup -ParameterFilter { $GroupScope -eq "DomainLocal" } -AtLeast -Times 1
         }
 
         It "sollten Benutzer den entsprechenden Gruppen hinzugefügt werden" {
             . "$PSScriptRoot\AddUsersWithOUstrukture.ps1"
-            # Teste, ob Add-ADGroupMember aufgerufen wurde
+            # Prüfe, ob Add-ADGroupMember aufgerufen wurde
             Assert-MockCalled -CommandName Add-ADGroupMember -AtLeast -Times 1
         }
     }
 }
 
-Invoke-Pester -Output Detailed
+. "C:\Users\kesch\Documents\GitHub\DomaenenPruefung\AddUsersWithOUstrukture.ps1"
+Invoke-Pester -OutputFormat Detailed
+Invoke-Pester
