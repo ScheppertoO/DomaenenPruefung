@@ -3,9 +3,9 @@
 :: Logon Script fuer Olaf Oben (Geschaeftsfuehrung)
 
 :: Home-Verzeichnis einbinden
-net use H: \\Server\Home /persistent:yes
+net use H: \\Server\Home 
 
 :: Abteilungs-Verzeichnis einbinden
-net use X: \\Server\Firmendaten\Gefue-Daten /persistent:yes
+net use X: \\Server\Firmendaten\Gefue-Daten 
 
 echo Netzlaufwerke fuer Olaf Oben wurden erfolgreich eingebunden.
