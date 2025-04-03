@@ -1,5 +1,10 @@
 # Stellen Sie sicher, dass das Active Directory-Modul geladen ist
-Import-Module ActiveDirectory
+try {
+    Import-Module ActiveDirectory -ErrorAction Stop
+}
+catch {
+    Write-Warning "ActiveDirectory Modul nicht verfuegbar – Dummy-Implementierungen werden genutzt."
+}
 
 $ExecutionPolicy = Get-ExecutionPolicy
 if ($ExecutionPolicy -ne "RemoteSigned") {
@@ -37,21 +42,21 @@ New-ADOrganizationalUnit -Name DL-Gruppen -Path "OU=Gruppen,OU=Technotrans,DC=Te
 
 # Benutzerberechtigungen definieren
 $userPermissionsArray = @(
-    @{Name="Ute Unten"; Permissions=@("DL-Versand-Read", "DL-Versand-Write")},
-    @{Name="Max Mitte"; Permissions=@("DL-Vertrieb-Read")},
-    @{Name="Olaf Oben"; Permissions=@("DL-Geschaeftsfuehrung-Full")}
+    @{Name="Ute Unten"; Permissions=@("DL-Versand-Daten-R")},
+    @{Name="Max Mitte"; Permissions=@("DL-Vertrieb-Daten-AE")},
+    @{Name="Olaf Oben"; Permissions=@("DL-Gefue-Daten-AE", "DL-Versand-Daten-R")}
 )
 
-# Konvertiere Benutzerberechtigungen in ein Hashtable für schnelleren Zugriff
+# Konvertiere Benutzerberechtigungen in ein Hashtable fuer schnelleren Zugriff
 $userPermissions = @{}
 foreach ($entry in $userPermissionsArray) {
     $userPermissions[$entry.Name] = $entry.Permissions
 }
 
 # Lokale Domaenengruppen erstellen (nur Read, Write, Full pro Abteilung)
-$departments = @("Buchhaltung", "Marketing", "IT", "Versand-Abt", "Vertrieb-Abt", "Gefue-Abt")
+$departments = @(<#"Buchhaltung", "Marketing", "IT",#>"Versand", "Vertrieb", "Gefue", "Shared")
 foreach ($department in $departments) {
-    foreach ($suffix in @("Read", "Write", "Full")) {
+    foreach ($suffix in @("-Daten-L", "-Daten-AE")) {
         $groupName = "DL-$department-$suffix"
         Write-Host "Pruefe lokale Domaenengruppe: $groupName"
         if (-not (Get-ADGroup -Filter {Name -eq $groupName})) {
@@ -65,64 +70,95 @@ foreach ($department in $departments) {
 
 # Benutzer anlegen und zu den entsprechenden Gruppen hinzufuegen
 foreach ($user in $users) {
-    $username = $user.Name -replace " ", "."
+    $cleanFullName = $user.Name.Trim()
+    $nameParts = $cleanFullName.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)
+    $firstName = $nameParts[0].Trim()
+    $lastName = if ($nameParts.Count -ge 2) { $nameParts[1].Trim() } else { "" }
+    $username = ("$firstName$lastName").Trim()  # aenderung: Kein Punkt
+     
     $password = "Password1"  # Sicherste Passwort der Welt
     $ou = $user.OU
-    $userPrincipalName = "$username@technostrans.dom"
+    $userPrincipalName = "$username@technotrans.dom"
 
-    # Erstelle den Benutzer nur, falls er noch nicht existiert
+    Write-Host "=== DEBUG: Variablen fuer Benutzer $cleanFullName ===" -ForegroundColor Cyan
+    Write-Host "firstName: $firstName" -ForegroundColor Gray
+    Write-Host "lastName: $lastName" -ForegroundColor Gray
+    Write-Host "username: $username" -ForegroundColor Gray
+    Write-Host "ou: $ou" -ForegroundColor Gray
+    Write-Host "userPrincipalName: $userPrincipalName" -ForegroundColor Gray
+    
     if (-not (Get-ADUser -Filter {SamAccountName -eq $username})) {
-        Write-Host "Erstelle Benutzer: $($user.Name)"
-        New-ADUser @{
-            Name               = $user.Name
-            GivenName          = $user.Name.Split(" ")[0]
-            Surname            = $user.Name.Split(" ")[1]
-            SamAccountName     = $username
-            UserPrincipalName  = $userPrincipalName
-            Path               = $ou
-            AccountPassword    = (ConvertTo-SecureString -AsPlainText $password -Force)
-            Enabled            = $true
-            PasswordNeverExpires = $true
-        }
+        Write-Host "Erstelle Benutzer: $cleanFullName"
+        New-ADUser -Name $cleanFullName `
+                  -GivenName $firstName `
+                  -Surname $lastName `
+                  -SamAccountName $username `
+                  -UserPrincipalName $userPrincipalName `
+                  -Path $ou `
+                  -AccountPassword (ConvertTo-SecureString -AsPlainText $password -Force) `
+                  -Enabled $true `
+                  -PasswordNeverExpires $true
     } else {
         Write-Host "Benutzer $username existiert bereits."
     }
-
-    # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "Versand-Group"
-    $deptGroup = "$($user.Department)-Group"
-    if (-not (Get-ADGroup -Filter {Name -eq $deptGroup})) {
-         Write-Host "Erstelle Gruppe: $deptGroup"
-         New-ADGroup -Name $deptGroup -GroupScope Global -Path "OU=GL-Gruppen,OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
-    }
-
-    # Benutzer der Abteilungsgruppe hinzufügen
-    Write-Host "Fuege Benutzer $username zu Gruppe $deptGroup hinzu"
-    Add-ADGroupMember -Identity $deptGroup -Members $username
-
-    # Benutzerberechtigungen auslesen und zu den entsprechenden Gruppen hinzufuegen
-    if ($userPermissions.ContainsKey($user.Name)) {
-        foreach ($permissionGroup in $userPermissions[$user.Name]) {
-            Write-Host "Fuege Benutzer $username zu Gruppe $permissionGroup hinzu"
-            if (Get-ADGroup -Filter {Name -eq $permissionGroup}) {
-                Add-ADGroupMember -Identity $permissionGroup -Members $username
-            } else {
-                Write-Host "Gruppe $permissionGroup existiert nicht. Ueberspringe Hinzufuegen."
-            }
-        }
+    $adUser = Get-ADUser -Filter {SamAccountName -eq $username}
+    
+    Write-Host "=== DEBUG: ADUser Objekt ===" -ForegroundColor Cyan
+    Write-Host "adUser: $adUser" -ForegroundColor Gray
+    if ($adUser) {
+        Write-Host "  DistinguishedName: $($adUser.DistinguishedName)" -ForegroundColor Gray
+        Write-Host "  SamAccountName: $($adUser.SamAccountName)" -ForegroundColor Gray
+        Write-Host "  UserPrincipalName: $($adUser.UserPrincipalName)" -ForegroundColor Gray
+        Write-Host "  Enabled: $($adUser.Enabled)" -ForegroundColor Gray
     } else {
-        Write-Host "Keine spezifischen Berechtigungen fuer Benutzer $username gefunden."
+        Write-Host "  adUser ist NULL oder leer!" -ForegroundColor Red
+    }
+    
+    if ($adUser) {
+        # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "Versand-Group"
+        $deptGroup = "GL-$($user.Department)"
+        Write-Host "=== DEBUG: Gruppenvariablen ===" -ForegroundColor Cyan
+        Write-Host "deptGroup: $deptGroup" -ForegroundColor Gray
+        Write-Host "Department: $($user.Department)" -ForegroundColor Gray        # Sicherstellen, dass die Abteilungsgruppe existiert, z.B. "GL-Versand"
+        $deptGroup = "GL-$($user.Department)"
+        if (-not (Get-ADGroup -Filter {Name -eq $deptGroup})) {
+            Write-Host "Erstelle Gruppe: $deptGroup"
+            New-ADGroup -Name $deptGroup -GroupScope Global -Path "OU=GL-Gruppen,OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
+        }
+    
+        # Benutzer der Abteilungsgruppe hinzufuegen
+        Write-Host "Fuege Benutzer $username zu Gruppe $deptGroup hinzu"
+        Add-ADGroupMember -Identity $deptGroup -Members $adUser
+    
+        # Benutzerberechtigungen auslesen und zu den entsprechenden Gruppen hinzufuegen
+        if ($userPermissions.ContainsKey($user.Name)) {
+            foreach ($permissionGroup in $userPermissions[$user.Name]) {
+                Write-Host "Fuege Benutzer $username zu Gruppe $permissionGroup hinzu"
+                if (Get-ADGroup -Filter {Name -eq $permissionGroup}) {
+                    Add-ADGroupMember -Identity $permissionGroup -Members $adUser
+                } else {
+                    Write-Host "Gruppe $permissionGroup existiert nicht. Ueberspringe Hinzufuegen."
+                }
+            }
+        } else {
+            Write-Host "Keine spezifischen Berechtigungen fuer Benutzer $username gefunden."
+        }
+    }
+    else {
+        Write-Host "Benutzererstellung fehlgeschlagen fuer $username. Gruppenzuordnung wird uebersprungen."
     }
 }
 
-# Neue Schleife zum Hinzufuegen der DL Gruppen als Mitglieder der entsprechenden GL Gruppen
-$departmentsForNesting = @("Buchhaltung", "Marketing", "IT", "Versand-Abt", "Vertrieb-Abt", "Gefue-Abt")
+# Schleife zum Hinzufuegen der GL Gruppen als Mitglieder der entsprechenden DL Gruppen
+# (Umkehrung der vorherigen Logik - Global Groups muessen in Domain Local Groups sein, nicht umgekehrt)
+$departmentsForNesting = @("Versand", "Vertrieb", "Gefue", "Shared")
 foreach ($department in $departmentsForNesting) {
-    $glGroup = "$department-Group"
-    foreach ($suffix in @("Read", "Write", "Full")) {
+    $glGroup = "GL-$department"
+    foreach ($suffix in @("Daten-AE", "Daten-L")) {
         $dlGroup = "DL-$department-$suffix"
         if ((Get-ADGroup -Filter {Name -eq $dlGroup}) -and (Get-ADGroup -Filter {Name -eq $glGroup})) {
-            Write-Host "Fuege DL Gruppe $dlGroup zur GL Gruppe $glGroup hinzu"
-            Add-ADGroupMember -Identity $glGroup -Members $dlGroup
+            Write-Host "Fuege GL Gruppe $glGroup zur DL Gruppe $dlGroup hinzu"
+            Add-ADGroupMember -Identity $dlGroup -Members $glGroup
         }
     }
 }
