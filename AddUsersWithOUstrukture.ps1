@@ -56,7 +56,7 @@ foreach ($entry in $userPermissionsArray) {
 # Lokale Domaenengruppen erstellen (nur Read, Write, Full pro Abteilung)
 $departments = @(<#"Buchhaltung", "Marketing", "IT",#>"Versand", "Vertrieb", "Gefue", "Shared")
 foreach ($department in $departments) {
-    foreach ($suffix in @("-Daten-L", "-Daten-AE")) {
+    foreach ($suffix in @("Daten-L", "Daten-AE")) {
         $groupName = "DL-$department-$suffix"
         Write-Host "Pruefe lokale Domaenengruppe: $groupName"
         if (-not (Get-ADGroup -Filter {Name -eq $groupName})) {
