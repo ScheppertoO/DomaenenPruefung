@@ -3,7 +3,7 @@ try {
     Import-Module ActiveDirectory -ErrorAction Stop
 }
 catch {
-    Write-Warning "ActiveDirectory Modul nicht verfügbar – Dummy-Implementierungen werden genutzt."
+    Write-Warning "ActiveDirectory Modul nicht verfuegbar – Dummy-Implementierungen werden genutzt."
 }
 
 $ExecutionPolicy = Get-ExecutionPolicy
@@ -47,7 +47,7 @@ $userPermissionsArray = @(
     @{Name="Olaf Oben"; Permissions=@("DL-Gefue-Daten-AE", "DL-Versand-Daten-R")}
 )
 
-# Konvertiere Benutzerberechtigungen in ein Hashtable für schnelleren Zugriff
+# Konvertiere Benutzerberechtigungen in ein Hashtable fuer schnelleren Zugriff
 $userPermissions = @{}
 foreach ($entry in $userPermissionsArray) {
     $userPermissions[$entry.Name] = $entry.Permissions
@@ -74,13 +74,13 @@ foreach ($user in $users) {
     $nameParts = $cleanFullName.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)
     $firstName = $nameParts[0].Trim()
     $lastName = if ($nameParts.Count -ge 2) { $nameParts[1].Trim() } else { "" }
-    $username = ("$firstName$lastName").Trim()  # Änderung: Kein Punkt
+    $username = ("$firstName$lastName").Trim()  # aenderung: Kein Punkt
      
     $password = "Password1"  # Sicherste Passwort der Welt
     $ou = $user.OU
     $userPrincipalName = "$username@technotrans.dom"
 
-    Write-Host "=== DEBUG: Variablen für Benutzer $cleanFullName ===" -ForegroundColor Cyan
+    Write-Host "=== DEBUG: Variablen fuer Benutzer $cleanFullName ===" -ForegroundColor Cyan
     Write-Host "firstName: $firstName" -ForegroundColor Gray
     Write-Host "lastName: $lastName" -ForegroundColor Gray
     Write-Host "username: $username" -ForegroundColor Gray
@@ -126,7 +126,7 @@ foreach ($user in $users) {
             New-ADGroup -Name $deptGroup -GroupScope Global -Path "OU=GL-Gruppen,OU=Gruppen,OU=Technotrans,DC=Technotrans,DC=dom"
         }
     
-        # Benutzer der Abteilungsgruppe hinzufügen
+        # Benutzer der Abteilungsgruppe hinzufuegen
         Write-Host "Fuege Benutzer $username zu Gruppe $deptGroup hinzu"
         Add-ADGroupMember -Identity $deptGroup -Members $adUser
     
@@ -145,19 +145,19 @@ foreach ($user in $users) {
         }
     }
     else {
-        Write-Host "Benutzererstellung fehlgeschlagen für $username. Gruppenzuordnung wird uebersprungen."
+        Write-Host "Benutzererstellung fehlgeschlagen fuer $username. Gruppenzuordnung wird uebersprungen."
     }
 }
 
-# Schleife zum Hinzufügen der GL Gruppen als Mitglieder der entsprechenden DL Gruppen
-# (Umkehrung der vorherigen Logik - Global Groups müssen in Domain Local Groups sein, nicht umgekehrt)
+# Schleife zum Hinzufuegen der GL Gruppen als Mitglieder der entsprechenden DL Gruppen
+# (Umkehrung der vorherigen Logik - Global Groups muessen in Domain Local Groups sein, nicht umgekehrt)
 $departmentsForNesting = @("Versand", "Vertrieb", "Gefue", "Shared")
 foreach ($department in $departmentsForNesting) {
     $glGroup = "GL-$department"
     foreach ($suffix in @("Daten-AE", "Daten-L")) {
         $dlGroup = "DL-$department-$suffix"
         if ((Get-ADGroup -Filter {Name -eq $dlGroup}) -and (Get-ADGroup -Filter {Name -eq $glGroup})) {
-            Write-Host "Füge GL Gruppe $glGroup zur DL Gruppe $dlGroup hinzu"
+            Write-Host "Fuege GL Gruppe $glGroup zur DL Gruppe $dlGroup hinzu"
             Add-ADGroupMember -Identity $dlGroup -Members $glGroup
         }
     }
