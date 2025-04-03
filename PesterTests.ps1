@@ -23,7 +23,7 @@ Describe "AddUsersWithOUstrukture.ps1" {
     Context "Beim Erstellen der OU-Struktur" {
         It "sollten OUs erstellt werden, wenn sie noch nicht existieren" {
             # Führe das Script aus
-            . "$PSScriptRoot\AddUsersWithOUstrukture.ps1"
+            . "C:\Users\kesch\Documents\GitHub\DomaenenPruefung\AddUsersWithOUstrukture.ps1"
             
             # Überprüfe, ob New-ADOrganizationalUnit für die ersten 4 OUs aufgerufen wurde
             Assert-MockCalled -CommandName New-ADOrganizationalUnit -ParameterFilter { $Name -eq "Technotrans" } -Exactly 1
