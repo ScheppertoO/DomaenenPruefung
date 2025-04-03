@@ -1,5 +1,10 @@
 # Stellen Sie sicher, dass das Active Directory-Modul geladen ist
-Import-Module ActiveDirectory
+try {
+    Import-Module ActiveDirectory -ErrorAction Stop
+}
+catch {
+    Write-Warning "ActiveDirectory Modul nicht verfügbar – Dummy-Implementierungen werden genutzt."
+}
 
 $ExecutionPolicy = Get-ExecutionPolicy
 if ($ExecutionPolicy -ne "RemoteSigned") {
