@@ -2,7 +2,7 @@ try {
     Import-Module ActiveDirectory -ErrorAction Stop
 }
 catch {
-    Write-Warning "ActiveDirectory Modul nicht verfuegbar – Dummy-Implementierungen werden genutzt"
+    Write-Warning "ActiveDirectory Modul nicht verfuegbar - Dummy-Implementierungen werden genutzt"
 }
 
 # Dummy-Implementierungen fuer AD-Cmdlets, falls diese nicht auf dem System vorhanden sind.
