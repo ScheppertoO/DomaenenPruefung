@@ -3,13 +3,13 @@ $serverName = Read-Host "Bitte geben Sie den Servernamen des Fileservers ein"
 
 # Benutzerinformationen
 $users = @(
-    @{Name="Ute Unten"; DepartmentPath="Firmendaten"},
-    @{Name="Max Mitte"; DepartmentPath="Firmendaten"},
-    @{Name="Olaf Oben"; DepartmentPath="Firmendaten"}
+    @{Name="UteUnten"; DepartmentPath="Firmendaten"},
+    @{Name="MaxMitte"; DepartmentPath="Firmendaten"},
+    @{Name="OlafOben"; DepartmentPath="Firmendaten"}
 )
 
 # Pfad für die Logonskripte
-$logonScriptPath = "C:\test" #"C:\Windows\SYSVOL\sysvol\technotrans.dom\scripts "
+$logonScriptPath ="C:\test"<#"C:\Windows\SYSVOL\sysvol\technotrans.dom\scripts "#>
 
 # Logonskripte generieren
 foreach ($user in $users) {
