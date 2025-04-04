@@ -1,7 +1,37 @@
+# Benutzerabfrage für den Servernamen
+$serverName = Read-Host "Bitte geben Sie den Servernamen des Fileservers ein"
+
+# Benutzerinformationen
+$users = @(
+    @{Name="Ute Unten"; DepartmentPath="Firmendaten\Versand-Daten"},
+    @{Name="Max Mitte"; DepartmentPath="Firmendaten\Vertrieb-Daten"},
+    @{Name="Olaf Oben"; DepartmentPath="Firmendaten\Gefue-Daten"}
+)
+
+# Pfad für die Logonskripte
+$logonScriptPath = "c:\Users\kd\OneDrive - Diamant Software GmbH\Dokumente\GitHub\ToolV2\DomaenenPruefung\Logonscripte"
+
+# Logonskripte generieren
+foreach ($user in $users) {
+    $batFileName = "$logonScriptPath\$($user.Name -replace ' ', '')-Logon.bat"
+    $batContent = @"
+@echo off
+:: Logon Script für $($user.Name)
+
+:: Home-Verzeichnis einbinden
+net use H: \\$serverName\Home 
+
+:: Abteilungs-Verzeichnis einbinden
+net use X: \\$serverName\$($user.DepartmentPath)
+"@
+    # Speichern der .bat-Datei
+    $batContent | Set-Content -Path $batFileName -Encoding UTF8
+    Write-Host "Logonskript erstellt: $batFileName"
+}
+
 # Define folder paths
 $basePath = "E:\Firmendaten"
 $homePath = "E:\Home"
-$serverName = "SRV-2022-001"
 $folders = @(
     "$basePath",
     "$basePath\Gefue-Daten",
@@ -57,4 +87,13 @@ foreach ($perm in $permissions) {
     $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($perm.User, $perm.Access, "ContainerInherit, ObjectInherit", "None", "Allow")))
     Set-Acl -Path $perm.Path -AclObject $acl
     Write-Host "Set $($perm.Access) permission for $($perm.User) on $($perm.Path)"
+}
+
+# Netzwerkfreigaben erstellen
+foreach ($folder in $folders) {
+    $shareName = ($folder -replace "E:\\Firmendaten\\", "").TrimEnd("-Daten")
+    if ($shareName -ne "") {
+        New-SmbShare -Name "$shareName-Daten" -Path $folder -FullAccess "$serverName\$shareName-Daten-AE"
+        Write-Host "Netzwerkfreigabe erstellt: $shareName-Daten"
+    }
 }
