@@ -1,55 +1,68 @@
-$fsVmName = "FILESERV-VM"  # Name der Fileserver-VM in Hyper-V
-$fsUser = "Administrator"
-$fsPassword = "Password1"
-$securePassword = ConvertTo-SecureString $fsPassword -AsPlainText -Force
-$fsCredential = New-Object PSCredential ($fsUser, $securePassword)
+# Define folder paths
+$basePath = "E:\Firmendaten"
+$homePath = "E:\Home"
+$folders = @(
+    "$basePath",
+    "$basePath\Gefue-Daten",
+    "$basePath\Vertrieb-Daten",
+    "$basePath\Versand-Daten",
+    "$basePath\Shared-Daten",
+    $homePath
+)
 
-Invoke-Command -VMName $fsVmName -Credential $fsCredential -ScriptBlock {
-    Write-Host "🔧 Starte Netzwerkkonfiguration für Fileserver..."
-
-    $oldName = "Ethernet"
-    $newName = "BUSINESS-NIC"
-    $ipAddress = "192.168.200.11"
-    $prefix = 24
-    $dnsServer = "192.168.200.101"
-    $domainName = "technotrans.dom"
-    $domainJoinUser = "$domainName\Administrator"
-    $domainJoinPass = ConvertTo-SecureString "Password1" -AsPlainText -Force
-    $domainCredential = New-Object PSCredential ($domainJoinUser, $domainJoinPass)
-
-    # Adapter umbenennen
-    Rename-NetAdapter -Name $oldName -NewName $newName -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-
-    # IP prüfen
-    $ipExists = Get-NetIPAddress -InterfaceAlias $newName -AddressFamily IPv4 |
-        Where-Object { $_.IPAddress -eq $ipAddress -and $_.PrefixLength -eq $prefix }
-
-    if (-not $ipExists) {
-        Write-Host "⚙️ Setze statische IP $ipAddress auf $newName..."
-        Get-NetIPAddress -InterfaceAlias $newName -AddressFamily IPv4 |
-            Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue
-
-        New-NetIPAddress `
-            -InterfaceAlias $newName `
-            -IPAddress $ipAddress `
-            -PrefixLength $prefix `
-            -AddressFamily IPv4
+# Create folder structure
+foreach ($folder in $folders) {
+    if (-not (Test-Path -Path $folder)) {
+        New-Item -Path $folder -ItemType Directory | Out-Null
+        Write-Host "Created folder: $folder"
     } else {
-        Write-Host "✅ IP bereits korrekt gesetzt."
+        Write-Host "Folder already exists: $folder"
     }
+}
 
-    # DNS setzen
-    Set-DnsClientServerAddress `
-        -InterfaceAlias $newName `
-        -ServerAddresses $dnsServer
+# Set permissions
+$acl = Get-Acl $basePath
+$acl.SetAccessRuleProtection($true, $false) # Disable inheritance
+Set-Acl -Path $basePath -AclObject $acl
 
-    Write-Host "✅ DNS auf $newName gesetzt: $dnsServer"
+# Restrict domain users from creating folders in Firmendaten
+$domainPrefix = "Technotrans"  # Domain name for your environment
+$domainUsers = "$domainPrefix\Domain Users"
+$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($domainUsers, "CreateFolders", "Deny")))
+Set-Acl -Path $basePath -AclObject $acl
 
-    # Domänenbeitritt
-    Write-Host "🔐 Trete der Domäne $domainName bei..."
-    Add-Computer -DomainName $domainName -Credential $domainCredential -Force
+# Assign permissions to DL groups instead of directly to users
+$permissions = @(
+    # Gefue permissions
+    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-L"; Access="ReadAndExecute", "Allow"},
+    
+    # Vertrieb permissions
+    @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-L"; Access="ReadAndExecute", "Allow"},
+    
+    # Versand permissions
+    @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-L"; Access="ReadAndExecute", "Allow"},
+    
+    # Shared permissions for all AE groups
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Gefue-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-AE"; Access="Modify"},
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Versand-Daten-AE"; Access="Modify"}
+)
 
-    Write-Host "✅ Domänenbeitritt abgeschlossen. Neustart wird durchgeführt..."
-    Restart-Computer
+foreach ($perm in $permissions) {
+    $acl = Get-Acl $perm.Path
+    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($perm.User, $perm.Access, "ContainerInherit, ObjectInherit", "None", "Allow")))
+    Set-Acl -Path $perm.Path -AclObject $acl
+    Write-Host "Set $($perm.Access) permission for $($perm.User) on $($perm.Path)"
+}
+
+# Netzwerkfreigaben erstellen
+foreach ($folder in $folders) {
+    $shareName = ($folder -replace "E:\\Firmendaten\\", "").TrimEnd("-Daten")
+    if ($shareName -ne "") {
+        New-SmbShare -Name "$shareName-Daten" -Path $folder -FullAccess "$serverName\$shareName-Daten-AE"
+        Write-Host "Netzwerkfreigabe erstellt: $shareName-Daten"
+    }
 }
