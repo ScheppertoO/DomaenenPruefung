@@ -1,12 +1,8 @@
-<# Konfiguration der Zugangsdaten
-$adminUser = "Administrator"
-$adminPass = "Password1"
-$secPass = ConvertTo-SecureString $adminPass -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential ($adminUser, $secPass)
-#>
-$vmNames = "DC" #@("FirstVM", "SecondVM", "ThirdVM") # Fuegen Sie hier die Namen aller VMs ein
+$vmNames = "DomainController" #@("FirstVM", "SecondVM", "ThirdVM") # Fuegen Sie hier die Namen aller VMs ein
 $username = "Administrator"
 $password = "Password1"
+$securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+$credential = New-Object PSCredential ($username, $securePassword)
 
 <# Ziel-VM definieren (VM-Name in Hyper-V)
 $targetVM = "DC" 
@@ -28,7 +24,7 @@ Invoke-Command -Session $session -ScriptBlock {
     Write-Host "Installiere AD-Domain-Services Rolle..."
     Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
 
-    Write-Host "Heraufstufen zum Domain Controller in der Domäne technotrans.dom..."
+    Write-Host "Heraufstufen zum Domain Controller in der DomÃ¤ne technotrans.dom..."
     $securePass = ConvertTo-SecureString "Password1" -AsPlainText -Force
     $adminCred = New-Object System.Management.Automation.PSCredential ("Administrator", $securePass)
     
@@ -40,7 +36,7 @@ Invoke-Command -Session $session -ScriptBlock {
         -NoRebootOnCompletion
 }
 
-# Optional: Nach der Heraufstufung Neustart (deaktiviert, falls nicht gewünscht)
+# Optional: Nach der Heraufstufung Neustart (deaktiviert, falls nicht gewÃ¼nscht)
 Invoke-Command -Session $session -ScriptBlock {
     Write-Host "Heraufstufung abgeschlossen, starte den Server neu..."
     Restart-Computer -Force
@@ -72,24 +68,71 @@ foreach ($vmName in $vmNames) {
     # Open PSsession
     Write-Host "Waiting for VM $vmName to be ready for a PowerShell session..."
     $sessionReady = $false
-    while (-not $sessionReady) {
-        try {
-            $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
-            $credential = New-Object System.Management.Automation.PSCredential ($username, $securePassword)
-            $session = New-PSSession -VMName $vmName -Credential $credential
-            $sessionReady = $true
-        } catch {
-            Write-Host "VM $vmName is not ready yet. Retrying in 5 seconds..."
-            Start-Sleep -Seconds 5
-        }
+    $timeout = 300
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    while (-not $sessionReady -and $stopwatch.Elapsed.TotalSeconds -lt $timeout) {
+    try {
+        $session = New-PSSession -VMName $vmName -Credential $credential
+        $sessionReady = $true
+    } catch {
+        Start-Sleep -Seconds 5
     }
+}
+if (-not $sessionReady) {
+    Write-Host "Timeout beim Herstellen der PS-Session zu $vmName" -ForegroundColor Red
+    continue
+}
+Invoke-Command -Session $session -ScriptBlock {
+    Write-Host "Überprüfe Netzwerkadapter & IP-Konfiguration..."
+
+    $interfaceAlias = "Ethernet 2"
+    $targetIP = "192.168.200.101"
+    $prefix = 24
+    $dnsServer = "127.0.0.1"
+    #$defaultGateway = "192.168.200.1"  # optional
+
+    # Prüfen, ob der Adapter existiert
+    $adapter = Get-NetAdapter -Name $interfaceAlias -ErrorAction SilentlyContinue
+    if (-not $adapter) {
+        Write-Host "❌ Adapter '$interfaceAlias' wurde nicht gefunden." -ForegroundColor Red
+        return
+    }
+
+    # Prüfen, ob IP bereits korrekt gesetzt ist
+    $ipExists = Get-NetIPAddress -InterfaceAlias $interfaceAlias -AddressFamily IPv4 |
+        Where-Object { $_.IPAddress -eq $targetIP -and $_.PrefixLength -eq $prefix }
+
+    if ($ipExists) {
+        Write-Host "✅ IP-Adresse $targetIP ist bereits gesetzt – keine Änderung nötig."
+    } else {
+        Write-Host "⚙️ Setze IP-Adresse auf $targetIP..."
+        # Alte IPs ggf. entfernen (optional)
+        Get-NetIPAddress -InterfaceAlias $interfaceAlias -AddressFamily IPv4 | Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue
+
+        # Neue IP setzen
+        New-NetIPAddress `
+            -InterfaceAlias $interfaceAlias `
+            -IPAddress $targetIP `
+            -PrefixLength $prefix `
+            -DefaultGateway $defaultGateway `
+            -AddressFamily IPv4
+
+        # DNS setzen
+        Set-DnsClientServerAddress `
+            -InterfaceAlias $interfaceAlias `
+            -ServerAddresses $dnsServer
+
+        Write-Host "✅ Statische IP & DNS wurden gesetzt."
+    }
+}
+
 
     Invoke-Command -Session $session -ScriptBlock {
         Write-Host "Installiere AD-Domain-Services Rolle..."
         Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
         Write-Host "Rolle AD-Domain-Services installiert."
             Start-Sleep -Seconds 60 # Warten auf die Installation der Rolle um sicher zu stellen es ist Fertig Installiert 
-        Write-Host "Heraufstufen zum Domain Controller in der Domäne technotrans.dom..."
+        Write-Host "Heraufstufen zum Domain Controller in der DomÃ¤ne technotrans.dom..."
         $securePass = ConvertTo-SecureString "Password1" -AsPlainText -Force
         $adminCred = New-Object System.Management.Automation.PSCredential ("Administrator", $securePass)
         
@@ -98,6 +141,7 @@ foreach ($vmName in $vmNames) {
             -DomainNetbiosName "TECHNOTRANS" `
             -SafeModeAdministratorPassword $adminCred.Password `
             -Force `
+            -Confirm:$false `
             -NoRebootOnCompletion
     }
 Start-Sleep -Seconds 60 # Warten auf die Installation der Rolle um sicher zu stellen es ist Fertig Installiert
