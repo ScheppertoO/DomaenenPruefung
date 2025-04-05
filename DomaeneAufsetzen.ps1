@@ -1,3 +1,13 @@
+#Abmin abfrage & exit falls nicht 
+if (-not ([Security.Principal.WindowsPrincipal] `
+    [Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Warning "⚠️  Dieses Skript muss als Administrator ausgeführt werden!"
+    Pause
+    exit
+}
+
+
 $vmNames = "DomainController" #@("FirstVM", "SecondVM", "ThirdVM") # Fuegen Sie hier die Namen aller VMs ein
 $username = "Administrator"
 $password = "Password1"
@@ -53,6 +63,7 @@ Invoke-Command -Session $session -ScriptBlock {
     Write-Host "XML-Datei wurde erfolgreich gespeichert: $filePath"
 } -ArgumentList $xmlContent
 #>
+######################################################################### PSSession ########################################################
 foreach ($vmName in $vmNames) {
     Write-Host "Processing VM: $vmName"
 
@@ -82,57 +93,92 @@ if (-not $sessionReady) {
     Write-Host "Timeout beim Herstellen der PS-Session zu $vmName" -ForegroundColor Red
     continue
 }
-Invoke-Command -Session $session -ScriptBlock {
-    Write-Host "Überprüfe Netzwerkadapter & IP-Konfiguration..."
 
-    $interfaceAlias = "Ethernet 2"
+#####################################################################  IP  ##########################################################
+Invoke-Command -Session $session -ScriptBlock {
+    Write-Host "🔧 Starte Netzwerkkonfiguration..."
+#Umschreiben für Goldsteps Umgebung
+    # Zielkonfiguration
+    $oldName1 = "Ethernet 1"
+    $oldName2 = "Ethernet 2"
+    $newName1 = "DefaultNetwork"
+    $newName2 = "BUSINESS-NIC"
+
     $targetIP = "192.168.200.101"
     $prefix = 24
     $dnsServer = "127.0.0.1"
-    #$defaultGateway = "192.168.200.1"  # optional
 
-    # Prüfen, ob der Adapter existiert
-    $adapter = Get-NetAdapter -Name $interfaceAlias -ErrorAction SilentlyContinue
+    # Netzwerkkarten umbenennen
+    Rename-NetAdapter -Name $oldName1 -NewName $newName1 -ErrorAction SilentlyContinue
+    Rename-NetAdapter -Name $oldName2 -NewName $newName2 -ErrorAction SilentlyContinue
+
+    Start-Sleep -Seconds 2 # Warten, damit Umbenennung greift
+
+    # Adapterprüfung
+    $adapter = Get-NetAdapter -Name $newName2 -ErrorAction SilentlyContinue
     if (-not $adapter) {
-        Write-Host "❌ Adapter '$interfaceAlias' wurde nicht gefunden." -ForegroundColor Red
+        Write-Host "❌ Adapter '$newName2' nicht gefunden!" -ForegroundColor Red
         return
     }
 
     # Prüfen, ob IP bereits korrekt gesetzt ist
-    $ipExists = Get-NetIPAddress -InterfaceAlias $interfaceAlias -AddressFamily IPv4 |
+    $ipExists = Get-NetIPAddress -InterfaceAlias $newName2 -AddressFamily IPv4 |
         Where-Object { $_.IPAddress -eq $targetIP -and $_.PrefixLength -eq $prefix }
 
     if ($ipExists) {
-        Write-Host "✅ IP-Adresse $targetIP ist bereits gesetzt – keine Änderung nötig."
+        Write-Host "✅ IP $targetIP ist bereits korrekt gesetzt."
     } else {
-        Write-Host "⚙️ Setze IP-Adresse auf $targetIP..."
-        # Alte IPs ggf. entfernen (optional)
-        Get-NetIPAddress -InterfaceAlias $interfaceAlias -AddressFamily IPv4 | Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue
+        Write-Host "⚙️ Setze IP-Adresse $targetIP auf $newName2..."
+
+        # Vorherige IPs entfernen (optional)
+        Get-NetIPAddress -InterfaceAlias $newName2 -AddressFamily IPv4 |
+            Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue
 
         # Neue IP setzen
         New-NetIPAddress `
-            -InterfaceAlias $interfaceAlias `
+            -InterfaceAlias $newName2 `
             -IPAddress $targetIP `
             -PrefixLength $prefix `
-            -DefaultGateway $defaultGateway `
             -AddressFamily IPv4
 
-        # DNS setzen
-        Set-DnsClientServerAddress `
-            -InterfaceAlias $interfaceAlias `
-            -ServerAddresses $dnsServer
-
-        Write-Host "✅ Statische IP & DNS wurden gesetzt."
+        Write-Host "✅ IP-Adresse gesetzt."
     }
+
+    # DNS setzen auf BUSINESS-NIC
+    Set-DnsClientServerAddress `
+        -InterfaceAlias $newName2 `
+        -ServerAddresses $dnsServer
+
+    Write-Host "✅ DNS für $newName2 gesetzt auf $dnsServer"
+
+    # DNS auf DefaultNetwork entfernen
+    Set-DnsClientServerAddress `
+        -InterfaceAlias $newName1 `
+        -ResetServerAddresses -ErrorAction SilentlyContinue
+
+    Write-Host "🧹 DNS auf $newName1 entfernt"
+}
+$weiter = Read-Host "Prüfe die IP einstellungen aller Netzwerkadapter, ggf DC nicht funktionsfertig. Weiter mit "j""
+if ($weiter.ToLower() -ne 'j') {
+    Write-Host "Abgebrochen."
+    exit
 }
 
 
+########################################################################  ADDS FEATURE  ##############################################################
     Invoke-Command -Session $session -ScriptBlock {
         Write-Host "Installiere AD-Domain-Services Rolle..."
         Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
         Write-Host "Rolle AD-Domain-Services installiert."
             Start-Sleep -Seconds 60 # Warten auf die Installation der Rolle um sicher zu stellen es ist Fertig Installiert 
         Write-Host "Heraufstufen zum Domain Controller in der DomÃ¤ne technotrans.dom..."
+        Read-Host "Letzte Chance für Kontrollen. Weiter mit 'j'"
+        $weiter = Read-Host "Gib 'j' ein zum Fortfahren"
+if ($weiter -ne 'j') {
+    Write-Host "Abgebrochen."
+    exit
+}
+
         $securePass = ConvertTo-SecureString "Password1" -AsPlainText -Force
         $adminCred = New-Object System.Management.Automation.PSCredential ("Administrator", $securePass)
         
