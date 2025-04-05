@@ -99,7 +99,7 @@ Invoke-Command -Session $session -ScriptBlock {
     Write-Host "🔧 Starte Netzwerkkonfiguration..."
 #Umschreiben für Goldsteps Umgebung
     # Zielkonfiguration
-    $oldName1 = "Ethernet 1"
+    $oldName1 = "Ethernet"
     $oldName2 = "Ethernet 2"
     $newName1 = "DefaultNetwork"
     $newName2 = "BUSINESS-NIC"
