@@ -96,7 +96,7 @@ if (-not $sessionReady) {
 
 #####################################################################  IP  ##########################################################
 Invoke-Command -Session $session -ScriptBlock {
-    Write-Host "🔧 Starte Netzwerkkonfiguration..."
+    Write-Host " Starte Netzwerkkonfiguration..."
 #Umschreiben fuer Goldsteps Umgebung
     # Zielkonfiguration
     $oldName1 = "Ethernet"
@@ -126,9 +126,9 @@ Invoke-Command -Session $session -ScriptBlock {
         Where-Object { $_.IPAddress -eq $targetIP -and $_.PrefixLength -eq $prefix }
 
     if ($ipExists) {
-        Write-Host "✅ IP $targetIP ist bereits korrekt gesetzt."
+        Write-Host " IP $targetIP ist bereits korrekt gesetzt."
     } else {
-        Write-Host "⚙️ Setze IP-Adresse $targetIP auf $newName2..."
+        Write-Host " Setze IP-Adresse $targetIP auf $newName2..."
 
         # Vorherige IPs entfernen (optional)
         Get-NetIPAddress -InterfaceAlias $newName2 -AddressFamily IPv4 |
@@ -141,7 +141,7 @@ Invoke-Command -Session $session -ScriptBlock {
             -PrefixLength $prefix `
             -AddressFamily IPv4
 
-        Write-Host "✅ IP-Adresse gesetzt."
+        Write-Host " IP-Adresse gesetzt."
     }
 
     # DNS setzen auf BUSINESS-NIC
@@ -149,7 +149,7 @@ Invoke-Command -Session $session -ScriptBlock {
         -InterfaceAlias $newName2 `
         -ServerAddresses $dnsServer
 
-    Write-Host "✅ DNS fuer $newName2 gesetzt auf $dnsServer"
+    Write-Host " DNS fuer $newName2 gesetzt auf $dnsServer"
 
     # DNS auf DefaultNetwork entfernen
     Set-DnsClientServerAddress `

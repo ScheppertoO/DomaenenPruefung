@@ -4,7 +4,7 @@ $fsPassword = "Password1"
 $securePassword = ConvertTo-SecureString $fsPassword -AsPlainText -Force
 $fsCredential = New-Object PSCredential ($fsUser, $securePassword) #>
 
-Write-Host "🔧 Starte Netzwerkkonfiguration fuer Fileserver..."
+Write-Host " Starte Netzwerkkonfiguration fuer Fileserver..."
 
 $oldName = "Ethernet"
 $newName = "BUSINESS-NIC"
@@ -25,7 +25,7 @@ $ipExists = Get-NetIPAddress -InterfaceAlias $newName -AddressFamily IPv4 |
 Where-Object { $_.IPAddress -eq $ipAddress -and $_.PrefixLength -eq $prefix }
 
 if (-not $ipExists) {
-    Write-Host "⚙️ Setze statische IP $ipAddress auf $newName..."
+    Write-Host " Setze statische IP $ipAddress auf $newName..."
     Get-NetIPAddress -InterfaceAlias $newName -AddressFamily IPv4 |
     Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue
 
@@ -36,7 +36,7 @@ if (-not $ipExists) {
         -AddressFamily IPv4
 }
 else {
-    Write-Host "✅ IP bereits korrekt gesetzt."
+    Write-Host " IP bereits korrekt gesetzt."
 }
 
 # DNS setzen
@@ -44,12 +44,12 @@ Set-DnsClientServerAddress `
     -InterfaceAlias $newName `
     -ServerAddresses $dnsServer
 
-Write-Host "✅ DNS auf $newName gesetzt: $dnsServer"
-
+Write-Host " DNS auf $newName gesetzt: $dnsServer warte auf Netzwerkidentifizierung 15sek"
+start-sleep 15
 # Domänenbeitritt
-Write-Host "🔐 Trete der Domäne $domainName bei..."
+Write-Host " Trete der Domäne $domainName bei..."
 Add-Computer -DomainName $domainName -Credential $domainCredential -Force
 
-Write-Host "✅ Domänenbeitritt abgeschlossen. Neustart wird durchgefuehrt..."
+Write-Host " Domänenbeitritt abgeschlossen. Neustart wird durchgefuehrt..."
 Read-Host "Jetzt Neustarten, weiter mit Enter"
 Restart-Computer

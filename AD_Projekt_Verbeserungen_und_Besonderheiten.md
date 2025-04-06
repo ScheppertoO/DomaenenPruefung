@@ -14,7 +14,7 @@ Diese uebersicht enthält Verbesserungsvorschläge und Besonderheiten zu allen b
 | Keine Freigabe vorhanden | Nur NTFS-Rechte definiert, keine SMB-Freigabe | `New-SmbShare` ergänzen |
 | Access-Based Enumeration fehlt | Wird laut Anforderung erwartet | `Set-SmbShare -FolderEnumerationMode AccessBased` ergänzen |
 
-### ✅ Beispiel: Firmendaten-Freigabe
+###  Beispiel: Firmendaten-Freigabe
 
 ```powershell
 New-SmbShare -Name "Firmendaten$" -Path "E:\Firmendaten" -FullAccess "TECHNOTRANS\DL-Firmendaten-L"
@@ -41,7 +41,7 @@ Set-SmbShare -Name "Firmendaten$" -FolderEnumerationMode AccessBased
 | Benutzerpasswoerter im Klartext | Sicherheitsrisiko | uebergabe ueber `Read-Host -AsSecureString` oder Passwortdatei verschluesselt |
 | Keine Pruefung auf Vorhandensein | OUs und Gruppen werden ohne Check erzeugt | Vorher pruefen mit `Get-ADOrganizationalUnit` / `Get-ADGroup` |
 
-### ✅ Beispiel: Passwortuebergabe sicher
+###  Beispiel: Passwortuebergabe sicher
 
 ```powershell
 $SecurePass = Read-Host "Passwort eingeben" -AsSecureString
@@ -60,7 +60,7 @@ New-ADUser -Name "Max Mustermann" -AccountPassword $SecurePass -Enabled $true
 
 ---
 
-## ⚙️ PowerShell Direct (generell)
+##  PowerShell Direct (generell)
 
 | Thema | Problem | Vorschlag |
 |-------|---------|-----------|
@@ -77,7 +77,7 @@ try {
 
 ---
 
-## ✅ Empfehlung
+##  Empfehlung
 
 - Alle Skripte mit Header-Block kommentieren: Zweck, Voraussetzungen, Zielsystem(e)
 - Einheitliche Strukturierung (z. B. Funktionen fuer wiederverwendbare Teile)
