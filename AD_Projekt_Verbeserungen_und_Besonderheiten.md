@@ -1,7 +1,7 @@
 # 🛠️ Verbesserungsuebersicht aller Skripte im AD-Projekt
 
 Stand: 06.04.2025  
-Diese uebersicht enthält Verbesserungsvorschläge und Besonderheiten zu allen bisher analysierten PowerShell-Skripten des Projekts (Domäne, Benutzer, Gruppen, Fileserver).
+Diese uebersicht enthaelt Verbesserungsvorschlaege und Besonderheiten zu allen bisher analysierten PowerShell-Skripten des Projekts (Domaene, Benutzer, Gruppen, Fileserver).
 
 ---
 
@@ -9,10 +9,10 @@ Diese uebersicht enthält Verbesserungsvorschläge und Besonderheiten zu allen b
 
 | Thema | Problem | Vorschlag |
 |-------|---------|-----------|
-| Zugriffsregel unvollständig | Zeile endet bei `$domainPrefix\DL-Gefue-Daten-AE` – vermutlich fehlen weitere Gruppen | `DL-Shared-AE` ergänzen |
+| Zugriffsregel unvollstaendig | Zeile endet bei `$domainPrefix\DL-Gefue-Daten-AE` – vermutlich fehlen weitere Gruppen | `DL-Shared-AE` ergaenzen |
 | Mehrfache Werte in AccessRule | `"ReadAndExecute", "Allow"` in einem Array statt einzelnem String | `New-Object FileSystemAccessRule(..., 'ReadAndExecute', 'Allow')` einzeln je Regel verwenden |
-| Keine Freigabe vorhanden | Nur NTFS-Rechte definiert, keine SMB-Freigabe | `New-SmbShare` ergänzen |
-| Access-Based Enumeration fehlt | Wird laut Anforderung erwartet | `Set-SmbShare -FolderEnumerationMode AccessBased` ergänzen |
+| Keine Freigabe vorhanden | Nur NTFS-Rechte definiert, keine SMB-Freigabe | `New-SmbShare` ergaenzen |
+| Access-Based Enumeration fehlt | Wird laut Anforderung erwartet | `Set-SmbShare -FolderEnumerationMode AccessBased` ergaenzen |
 
 ###  Beispiel: Firmendaten-Freigabe
 
@@ -28,8 +28,8 @@ Set-SmbShare -Name "Firmendaten$" -FolderEnumerationMode AccessBased
 | Thema | Problem | Vorschlag |
 |-------|---------|-----------|
 | NetBIOS vs. FQDN | FQDN `technotrans.dom` ist korrekt, aber Anmeldung erfolgt mit `TECHNOTRANS\Administrator` | Kommentar im Skript einfuegen, z. B.: „Anmeldung mit TECHNOTRANS\Administrator“ |
-| Kein Logging vorhanden | Bei Fehlern keine Nachvollziehbarkeit | `Out-File`, `Start-Transcript` oder Logging ergänzen |
-| Rolleninstallation kommentarlos | Installation von Features erfolgt ohne Erklärung | Abschnittsweise kommentieren (ADDS, DNS, Heraufstufung etc.) |
+| Kein Logging vorhanden | Bei Fehlern keine Nachvollziehbarkeit | `Out-File`, `Start-Transcript` oder Logging ergaenzen |
+| Rolleninstallation kommentarlos | Installation von Features erfolgt ohne Erklaerung | Abschnittsweise kommentieren (ADDS, DNS, Heraufstufung etc.) |
 
 ---
 
@@ -54,7 +54,7 @@ New-ADUser -Name "Max Mustermann" -AccountPassword $SecurePass -Enabled $true
 
 | Thema | Problem | Vorschlag |
 |-------|---------|-----------|
-| Kein Hinweis zur Domänenanmeldung | FQDN `technotrans.dom` vs. Anmeldung `TECHNOTRANS\Administrator` | Klarer Kommentar ergänzen |
+| Kein Hinweis zur Domaenenanmeldung | FQDN `technotrans.dom` vs. Anmeldung `TECHNOTRANS\Administrator` | Klarer Kommentar ergaenzen |
 | Kein Test auf vorhandene Ordner | `New-Item` wird ohne Pruefung ausgefuehrt | `Test-Path` vor `New-Item` verwenden |
 | Rechtevergabe teilweise redundant | Zugriff fuer gleiche Gruppen mehrfach gesetzt | Berechtigungen konsolidieren, ggf. ueber Hashtable strukturieren |
 
@@ -64,8 +64,8 @@ New-ADUser -Name "Max Mustermann" -AccountPassword $SecurePass -Enabled $true
 
 | Thema | Problem | Vorschlag |
 |-------|---------|-----------|
-| Abhängigkeit von Hyper-V | PS Direct funktioniert nur lokal in Hyper-V | Dokumentieren in README oder Doku („nur mit lokalem Hyper-V moeglich“) |
-| Keine Fehlerbehandlung | `Invoke-Command` ohne `-ErrorAction` | Ergänzen mit `-ErrorAction Stop` + `try/catch` |
+| Abhaengigkeit von Hyper-V | PS Direct funktioniert nur lokal in Hyper-V | Dokumentieren in README oder Doku („nur mit lokalem Hyper-V moeglich“) |
+| Keine Fehlerbehandlung | `Invoke-Command` ohne `-ErrorAction` | Ergaenzen mit `-ErrorAction Stop` + `try/catch` |
 
 ```powershell
 try {
@@ -81,7 +81,7 @@ try {
 
 - Alle Skripte mit Header-Block kommentieren: Zweck, Voraussetzungen, Zielsystem(e)
 - Einheitliche Strukturierung (z. B. Funktionen fuer wiederverwendbare Teile)
-- Logging oder Protokollierung ergänzen
+- Logging oder Protokollierung ergaenzen
 - Optionale Validierungsskripte: Pruefen, ob alles wie gewuenscht eingerichtet ist
 
 ---

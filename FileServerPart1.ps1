@@ -46,10 +46,10 @@ Set-DnsClientServerAddress `
 
 Write-Host " DNS auf $newName gesetzt: $dnsServer warte auf Netzwerkidentifizierung 15sek"
 start-sleep 15
-# Domänenbeitritt
-Write-Host " Trete der Domäne $domainName bei..."
+# Domaenenbeitritt
+Write-Host " Trete der Domaene $domainName bei..."
 Add-Computer -DomainName $domainName -Credential $domainCredential -Force
 
-Write-Host " Domänenbeitritt abgeschlossen. Neustart wird durchgefuehrt..."
+Write-Host " Domaenenbeitritt abgeschlossen. Neustart wird durchgefuehrt..."
 Read-Host "Jetzt Neustarten, weiter mit Enter"
 Restart-Computer
