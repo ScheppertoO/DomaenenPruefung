@@ -1,7 +1,7 @@
-# 🛠️ Verbesserungsübersicht aller Skripte im AD-Projekt
+# 🛠️ Verbesserungsuebersicht aller Skripte im AD-Projekt
 
 Stand: 06.04.2025  
-Diese Übersicht enthält Verbesserungsvorschläge und Besonderheiten zu allen bisher analysierten PowerShell-Skripten des Projekts (Domäne, Benutzer, Gruppen, Fileserver).
+Diese uebersicht enthält Verbesserungsvorschläge und Besonderheiten zu allen bisher analysierten PowerShell-Skripten des Projekts (Domäne, Benutzer, Gruppen, Fileserver).
 
 ---
 
@@ -27,7 +27,7 @@ Set-SmbShare -Name "Firmendaten$" -FolderEnumerationMode AccessBased
 
 | Thema | Problem | Vorschlag |
 |-------|---------|-----------|
-| NetBIOS vs. FQDN | FQDN `technotrans.dom` ist korrekt, aber Anmeldung erfolgt mit `TECHNOTRANS\Administrator` | Kommentar im Skript einfügen, z. B.: „Anmeldung mit TECHNOTRANS\Administrator“ |
+| NetBIOS vs. FQDN | FQDN `technotrans.dom` ist korrekt, aber Anmeldung erfolgt mit `TECHNOTRANS\Administrator` | Kommentar im Skript einfuegen, z. B.: „Anmeldung mit TECHNOTRANS\Administrator“ |
 | Kein Logging vorhanden | Bei Fehlern keine Nachvollziehbarkeit | `Out-File`, `Start-Transcript` oder Logging ergänzen |
 | Rolleninstallation kommentarlos | Installation von Features erfolgt ohne Erklärung | Abschnittsweise kommentieren (ADDS, DNS, Heraufstufung etc.) |
 
@@ -38,10 +38,10 @@ Set-SmbShare -Name "Firmendaten$" -FolderEnumerationMode AccessBased
 | Thema | Problem | Vorschlag |
 |-------|---------|-----------|
 | Naming Convention unklar | Gruppen wie `DL-Shared-AE`, `DL-Gefue-Daten-AE` ohne Schema-Doku | Kommentar oder README mit Namensschema anlegen |
-| Benutzerpasswörter im Klartext | Sicherheitsrisiko | Übergabe über `Read-Host -AsSecureString` oder Passwortdatei verschlüsselt |
-| Keine Prüfung auf Vorhandensein | OUs und Gruppen werden ohne Check erzeugt | Vorher prüfen mit `Get-ADOrganizationalUnit` / `Get-ADGroup` |
+| Benutzerpasswoerter im Klartext | Sicherheitsrisiko | uebergabe ueber `Read-Host -AsSecureString` oder Passwortdatei verschluesselt |
+| Keine Pruefung auf Vorhandensein | OUs und Gruppen werden ohne Check erzeugt | Vorher pruefen mit `Get-ADOrganizationalUnit` / `Get-ADGroup` |
 
-### ✅ Beispiel: Passwortübergabe sicher
+### ✅ Beispiel: Passwortuebergabe sicher
 
 ```powershell
 $SecurePass = Read-Host "Passwort eingeben" -AsSecureString
@@ -55,8 +55,8 @@ New-ADUser -Name "Max Mustermann" -AccountPassword $SecurePass -Enabled $true
 | Thema | Problem | Vorschlag |
 |-------|---------|-----------|
 | Kein Hinweis zur Domänenanmeldung | FQDN `technotrans.dom` vs. Anmeldung `TECHNOTRANS\Administrator` | Klarer Kommentar ergänzen |
-| Kein Test auf vorhandene Ordner | `New-Item` wird ohne Prüfung ausgeführt | `Test-Path` vor `New-Item` verwenden |
-| Rechtevergabe teilweise redundant | Zugriff für gleiche Gruppen mehrfach gesetzt | Berechtigungen konsolidieren, ggf. über Hashtable strukturieren |
+| Kein Test auf vorhandene Ordner | `New-Item` wird ohne Pruefung ausgefuehrt | `Test-Path` vor `New-Item` verwenden |
+| Rechtevergabe teilweise redundant | Zugriff fuer gleiche Gruppen mehrfach gesetzt | Berechtigungen konsolidieren, ggf. ueber Hashtable strukturieren |
 
 ---
 
@@ -64,7 +64,7 @@ New-ADUser -Name "Max Mustermann" -AccountPassword $SecurePass -Enabled $true
 
 | Thema | Problem | Vorschlag |
 |-------|---------|-----------|
-| Abhängigkeit von Hyper-V | PS Direct funktioniert nur lokal in Hyper-V | Dokumentieren in README oder Doku („nur mit lokalem Hyper-V möglich“) |
+| Abhängigkeit von Hyper-V | PS Direct funktioniert nur lokal in Hyper-V | Dokumentieren in README oder Doku („nur mit lokalem Hyper-V moeglich“) |
 | Keine Fehlerbehandlung | `Invoke-Command` ohne `-ErrorAction` | Ergänzen mit `-ErrorAction Stop` + `try/catch` |
 
 ```powershell
@@ -80,9 +80,9 @@ try {
 ## ✅ Empfehlung
 
 - Alle Skripte mit Header-Block kommentieren: Zweck, Voraussetzungen, Zielsystem(e)
-- Einheitliche Strukturierung (z. B. Funktionen für wiederverwendbare Teile)
+- Einheitliche Strukturierung (z. B. Funktionen fuer wiederverwendbare Teile)
 - Logging oder Protokollierung ergänzen
-- Optionale Validierungsskripte: Prüfen, ob alles wie gewünscht eingerichtet ist
+- Optionale Validierungsskripte: Pruefen, ob alles wie gewuenscht eingerichtet ist
 
 ---
 

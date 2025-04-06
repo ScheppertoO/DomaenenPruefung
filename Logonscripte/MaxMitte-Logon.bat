@@ -1,5 +1,5 @@
 @echo off
-:: Logon Script für Max Mitte (Vertrieb)
+:: Logon Script fuer Max Mitte (Vertrieb)
 
 :: Home-Verzeichnis einbinden
 net use H: \\Server\Home 

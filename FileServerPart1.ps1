@@ -4,7 +4,7 @@ $fsPassword = "Password1"
 $securePassword = ConvertTo-SecureString $fsPassword -AsPlainText -Force
 $fsCredential = New-Object PSCredential ($fsUser, $securePassword) #>
 
-Write-Host "🔧 Starte Netzwerkkonfiguration für Fileserver..."
+Write-Host "🔧 Starte Netzwerkkonfiguration fuer Fileserver..."
 
 $oldName = "Ethernet"
 $newName = "BUSINESS-NIC"
@@ -20,7 +20,7 @@ $domainCredential = New-Object PSCredential ($domainJoinUser, $domainJoinPass)
 Rename-NetAdapter -Name $oldName -NewName $newName -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 
-# IP prüfen
+# IP pruefen
 $ipExists = Get-NetIPAddress -InterfaceAlias $newName -AddressFamily IPv4 |
 Where-Object { $_.IPAddress -eq $ipAddress -and $_.PrefixLength -eq $prefix }
 
@@ -50,6 +50,6 @@ Write-Host "✅ DNS auf $newName gesetzt: $dnsServer"
 Write-Host "🔐 Trete der Domäne $domainName bei..."
 Add-Computer -DomainName $domainName -Credential $domainCredential -Force
 
-Write-Host "✅ Domänenbeitritt abgeschlossen. Neustart wird durchgeführt..."
+Write-Host "✅ Domänenbeitritt abgeschlossen. Neustart wird durchgefuehrt..."
 Read-Host "Jetzt Neustarten, weiter mit Enter"
 Restart-Computer

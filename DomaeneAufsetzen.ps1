@@ -2,7 +2,7 @@
 if (-not ([Security.Principal.WindowsPrincipal] `
     [Security.Principal.WindowsIdentity]::GetCurrent()
 ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Warning "⚠️  Dieses Skript muss als Administrator ausgeführt werden!"
+    Write-Warning "⚠️  Dieses Skript muss als Administrator ausgefuehrt werden!"
     Pause
     exit
 }
@@ -97,7 +97,7 @@ if (-not $sessionReady) {
 #####################################################################  IP  ##########################################################
 Invoke-Command -Session $session -ScriptBlock {
     Write-Host "🔧 Starte Netzwerkkonfiguration..."
-#Umschreiben für Goldsteps Umgebung
+#Umschreiben fuer Goldsteps Umgebung
     # Zielkonfiguration
     $oldName1 = "Ethernet"
     $oldName2 = "Ethernet 2"
@@ -114,14 +114,14 @@ Invoke-Command -Session $session -ScriptBlock {
 
     Start-Sleep -Seconds 2 # Warten, damit Umbenennung greift
 
-    # Adapterprüfung
+    # Adapterpruefung
     $adapter = Get-NetAdapter -Name $newName2 -ErrorAction SilentlyContinue
     if (-not $adapter) {
         Write-Host "❌ Adapter '$newName2' nicht gefunden!" -ForegroundColor Red
         return
     }
 
-    # Prüfen, ob IP bereits korrekt gesetzt ist
+    # Pruefen, ob IP bereits korrekt gesetzt ist
     $ipExists = Get-NetIPAddress -InterfaceAlias $newName2 -AddressFamily IPv4 |
         Where-Object { $_.IPAddress -eq $targetIP -and $_.PrefixLength -eq $prefix }
 
@@ -149,7 +149,7 @@ Invoke-Command -Session $session -ScriptBlock {
         -InterfaceAlias $newName2 `
         -ServerAddresses $dnsServer
 
-    Write-Host "✅ DNS für $newName2 gesetzt auf $dnsServer"
+    Write-Host "✅ DNS fuer $newName2 gesetzt auf $dnsServer"
 
     # DNS auf DefaultNetwork entfernen
     Set-DnsClientServerAddress `
@@ -158,7 +158,7 @@ Invoke-Command -Session $session -ScriptBlock {
 
     Write-Host "🧹 DNS auf $newName1 entfernt"
 }
-$weiter = Read-Host "Prüfe die IP einstellungen aller Netzwerkadapter, ggf DC nicht funktionsfertig. Weiter mit "j""
+$weiter = Read-Host "Pruefe die IP einstellungen aller Netzwerkadapter, ggf DC nicht funktionsfertig. Weiter mit "j""
 if ($weiter.ToLower() -ne 'j') {
     Write-Host "Abgebrochen."
     exit
@@ -172,7 +172,7 @@ if ($weiter.ToLower() -ne 'j') {
         Write-Host "Rolle AD-Domain-Services installiert."
             Start-Sleep -Seconds 60 # Warten auf die Installation der Rolle um sicher zu stellen es ist Fertig Installiert 
         Write-Host "Heraufstufen zum Domain Controller in der DomÃ¤ne technotrans.dom..."
-        Read-Host "Letzte Chance für Kontrollen. Weiter mit 'j'"
+        Read-Host "Letzte Chance fuer Kontrollen. Weiter mit 'j'"
         $weiter = Read-Host "Gib 'j' ein zum Fortfahren"
 if ($weiter -ne 'j') {
     Write-Host "Abgebrochen."

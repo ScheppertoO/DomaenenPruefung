@@ -1,4 +1,4 @@
-# Benutzerabfrage für den Servernamen
+# Benutzerabfrage fuer den Servernamen
 $serverName = Read-Host "Bitte geben Sie den Servernamen des Fileservers ein"
 
 # Benutzerinformationen
@@ -8,7 +8,7 @@ $users = @(
     @{Name="OlafOben"; DepartmentPath="Firmendaten"}
 )
 
-# Pfad für die Logonskripte
+# Pfad fuer die Logonskripte
 $logonScriptPath ="C:\test"<#"C:\Windows\SYSVOL\sysvol\technotrans.dom\scripts "#>
 
 # Logonskripte generieren
@@ -16,7 +16,7 @@ foreach ($user in $users) {
     $batFileName = "$logonScriptPath\$($user.Name -replace ' ', '')-Logon.bat"
     $batContent = @"
 @echo off
-:: Logon Script für $($user.Name)
+:: Logon Script fuer $($user.Name)
 
 :: Home-Verzeichnis einbinden
 net use H: \\$serverName\Home\$($user.Name)
