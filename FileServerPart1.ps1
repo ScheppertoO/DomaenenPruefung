@@ -45,11 +45,13 @@ Set-DnsClientServerAddress `
     -ServerAddresses $dnsServer
 
 Write-Host " DNS auf $newName gesetzt: $dnsServer warte auf Netzwerkidentifizierung 15sek"
+
 start-sleep 15
+
 # Domaenenbeitritt
 Write-Host " Trete der Domaene $domainName bei..."
 Add-Computer -DomainName $domainName -Credential $domainCredential -Force
-
+#Keine Eingabe = Wartet Eingabe = Neustart Abbrechen = Stoppe einfach das skript (STRG + C)
 Write-Host " Domaenenbeitritt abgeschlossen. Neustart wird durchgefuehrt..."
 Read-Host "Jetzt Neustarten, weiter mit Enter"
 Restart-Computer
