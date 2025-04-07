@@ -1,9 +1,7 @@
-:: filepath: c:\Users\kesch\Documents\GitHub\DomaenenPruefung\OlafOben-Logon.bat
 @echo off
-:: Logon Script fuer Olaf Oben (Gefue)
 
-:: Home-Verzeichnis einbinden
+:: Home-Verzeichnis
 net use H: \\Server\Home 
 
-:: Abteilungs-Verzeichnis einbinden
+:: Abteilungs-Verzeichnis
 net use X: \\Server\Firmendaten\Gefue-Daten

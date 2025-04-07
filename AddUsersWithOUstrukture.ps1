@@ -370,7 +370,7 @@ foreach ($user in $users) {
     $nameParts = $cleanFullName.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)
     $firstName = $nameParts[0].Trim()
     $lastName = if ($nameParts.Count -ge 2) { $nameParts[1].Trim() } else { "" }
-    $username = ("$firstName$lastName").ToLower()
+    $username = ("$firstName.$lastName").ToLower()
 
     # Hinweis: Fuer produktiven Einsatz ein sicheres, zufaelliges Passwort oder Parameteruebergabe nutzen
     $password = "Password1"  
