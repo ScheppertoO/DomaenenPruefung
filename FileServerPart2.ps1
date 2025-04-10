@@ -1,6 +1,5 @@
 # Dynamisch den Domainnamen und den Servernamen ermitteln
 $domainPrefix = $env:USERDOMAIN
-$serverName = $env:COMPUTERNAME
 
 # Define folder paths
 $basePath = "E:\Firmendaten"
