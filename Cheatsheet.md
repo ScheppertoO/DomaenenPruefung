@@ -27,7 +27,7 @@ Hole die neuesten aenderungen vom Remote-Repository (`origin`) auf deinen lokale
 git pull origin main
 ```
 
-### 4. aenderungen mergen
+### 4. aenderungen mergen!
 
 Fuehre die aenderungen deines Feature-Branches in den Haupt-Branch ein:
 
