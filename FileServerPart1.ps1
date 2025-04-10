@@ -1,7 +1,7 @@
 <# $fsVmName = "FILESERV-VM"  # Name der Fileserver-VM in Hyper-V
 $fsUser = "Administrator"
 $fsPassword = "Password1"
-$securePassword = ConvertTo-SecureString $fsPassword -AsPlainText -Force Test:D
+$securePassword = ConvertTo-SecureString $fsPassword -AsPlainText -Force
 $fsCredential = New-Object PSCredential ($fsUser, $securePassword) #>
 
 Write-Host " Starte Netzwerkkonfiguration fuer Fileserver..."
