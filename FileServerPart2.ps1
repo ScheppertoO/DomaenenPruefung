@@ -43,7 +43,7 @@ try {
     $acl.AddAccessRule($denyRule)
     Set-Acl -Path $basePath -AclObject $acl
 } catch {
-        Write-Host "Fehler beim Hinzufügen der Deny-Regel für $($domainUsers): $($_.Exception.Message)"
+        Write-Host "Fehler beim Hinzufuegen der Deny-Regel fuer $($domainUsers): $($_.Exception.Message)"
 }
 
 
@@ -100,7 +100,7 @@ foreach ($perm in $permissions) {
     Write-Host "Set $($perm.Access) permission for $($perm.User) on $($perm.Path)"
 }
 
-# Erstelle SMB-Freigaben für die Unterordner in Firmendaten (ohne $basePath und $homePath)
+# Erstelle SMB-Freigaben fuer die Unterordner in Firmendaten (ohne $basePath und $homePath)
 $baseSubFolders = @(
     "$basePath\Gefue-Daten",
     "$basePath\Vertrieb-Daten",
@@ -118,7 +118,7 @@ foreach ($folder in $baseSubFolders) {
             New-SmbShare -Name $shareName -Path $folder -FullAccess $fullAccessAccount
             Write-Host "Netzwerkfreigabe erstellt: $shareName"
         } catch {
-            Write-Host "Fehler beim Erstellen der Freigabe für $folder: $($_.Exception.Message)"
+            Write-Host "Fehler beim Erstellen der Freigabe fuer $($folder) : $($_.Exception.Message)"
         }
     } else {
         Write-Host "Share $shareName existiert bereits, keine Aktion erforderlich."
