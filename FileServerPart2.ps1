@@ -156,7 +156,7 @@ if ($domainUsersSID.Success) {
                 $success = $true
                 break
             } catch {
-                Write-Host "Fehler beim Hinzufuegen der Deny-Regel fuer $name: $($_.Exception.Message)"
+                Write-Host "Fehler beim Hinzufuegen der Deny-Regel fuer $($name): $($_.Exception.Message)"
             }
         }
     }
