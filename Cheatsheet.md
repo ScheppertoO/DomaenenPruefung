@@ -2,7 +2,27 @@
 
 ## Schritte im Detail
 
-### 1. aenderungen lokal committen
+### Neuen Branch aus dem Origin Main, sync remote(branchname) to main Origin
+
+Aktualisiere vom Origin
+
+```bash
+git fetch origin
+```
+
+Erstelle Remote aus Main Origin
+
+```bash
+git checkout -b feature-branch origin/main
+```
+
+Falls du sicherstellen möchtest, dass der Tracking-Branch richtig gesetzt ist, kannst du folgenden Befehl nutzen:
+
+```bash
+git branch --set-upstream-to=origin/main feature-branch
+```
+
+ 1. aenderungen lokal committen
 
 Speichere deine aenderungen in deinem aktuellen Branch:
 
@@ -27,7 +47,7 @@ Hole die neuesten aenderungen vom Remote-Repository (`origin`) auf deinen lokale
 git pull origin main
 ```
 
-### 4. aenderungen mergen!
+### 4. aenderungen mergen
 
 Fuehre die aenderungen deines Feature-Branches in den Haupt-Branch ein:
 
