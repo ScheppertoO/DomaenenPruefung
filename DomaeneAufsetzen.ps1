@@ -2,7 +2,7 @@
 if (-not ([Security.Principal.WindowsPrincipal] `
     [Security.Principal.WindowsIdentity]::GetCurrent()
 ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Warning "⚠️  Dieses Skript muss als Administrator ausgefuehrt werden!"
+    Write-Warning "  Dieses Skript muss als Administrator ausgefuehrt werden!"
     Pause
     exit
 }
@@ -117,7 +117,7 @@ Invoke-Command -Session $session -ScriptBlock {
     # Adapterpruefung
     $adapter = Get-NetAdapter -Name $newName2 -ErrorAction SilentlyContinue
     if (-not $adapter) {
-        Write-Host "❌ Adapter '$newName2' nicht gefunden!" -ForegroundColor Red
+        Write-Host " Adapter '$newName2' nicht gefunden!" -ForegroundColor Red
         return
     }
 
