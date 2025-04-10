@@ -53,29 +53,29 @@ $permissions = @(
     # Gefue-Daten
     @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-L"; Access="ReadAndExecute"},
-    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\NT AUTHORITY\SYSTEM"; Access="FullControl"},
-    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\BUILTIN\Administrators"; Access="FullControl"},
+    @{Path="$basePath\Gefue-Daten"; User="NT AUTHORITY\SYSTEM"; Access="FullControl"},
+    @{Path="$basePath\Gefue-Daten"; User="BUILTIN\Administrators"; Access="FullControl"},
     @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\Domain Admins"; Access="FullControl"},
 
     # Vertrieb-Daten
     @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-L"; Access="ReadAndExecute"},
-    @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\NT AUTHORITY\SYSTEM"; Access="FullControl"},
-    @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\BUILTIN\Administrators"; Access="FullControl"},
+    @{Path="$basePath\Vertrieb-Daten"; User="NT AUTHORITY\SYSTEM"; Access="FullControl"},
+    @{Path="$basePath\Vertrieb-Daten"; User="BUILTIN\Administrators"; Access="FullControl"},
     @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\Domain Admins"; Access="FullControl"},
     
     # Versand-Daten
     @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-L"; Access="ReadAndExecute"},
-    @{Path="$basePath\Versand-Daten"; User="$domainPrefix\NT AUTHORITY\SYSTEM"; Access="FullControl"},
-    @{Path="$basePath\Versand-Daten"; User="$domainPrefix\BUILTIN\Administrators"; Access="FullControl"},
+    @{Path="$basePath\Versand-Daten"; User="NT AUTHORITY\SYSTEM"; Access="FullControl"},
+    @{Path="$basePath\Versand-Daten"; User="BUILTIN\Administrators"; Access="FullControl"},
     @{Path="$basePath\Versand-Daten"; User="$domainPrefix\Domain Admins"; Access="FullControl"},
     
     # Shared-Daten
     @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Shared-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Shared-Daten-L"; Access="ReadAndExecute"},
-    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\NT AUTHORITY\SYSTEM"; Access="FullControl"},
-    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\BUILTIN\Administrators"; Access="FullControl"},
+    @{Path="$basePath\Shared-Daten"; User="NT AUTHORITY\SYSTEM"; Access="FullControl"},
+    @{Path="$basePath\Shared-Daten"; User="BUILTIN\Administrators"; Access="FullControl"},
     @{Path="$basePath\Shared-Daten"; User="$domainPrefix\Domain Admins"; Access="FullControl"}
 )
 
