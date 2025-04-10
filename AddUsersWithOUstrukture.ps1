@@ -251,7 +251,7 @@ if ($executionPolicy -ne "RemoteSigned") {
 # ========================================================================
 # Definition der Benutzer und Abteilungs-Mapping
 # ========================================================================
-# Mapping: Wenn im Benutzerobjekt "Geschaeftsfuehrung" steht, soll intern "Gefue" genutzt werden
+# Mapping: Wenn im Benutzerobjekt "Geschaeftsfuehrung" steht, soll intern "Gefue" genutzt werdens
 $deptMapping = @{
     "Geschaeftsfuehrung" = "Gefue"
 }
