@@ -118,7 +118,7 @@ foreach ($folder in $baseSubFolders) {
             New-SmbShare -Name $shareName -Path $folder -FullAccess $fullAccessAccount
             Write-Host "Netzwerkfreigabe erstellt: $shareName"
         } catch {
-            Write-Host "Fehler beim Erstellen der Freigabe fuer $($folder) : $($_.Exception.Message)"
+            Write-Host "Fehler beim Erstellen der Freigabe fuer $($folder): $($_.Exception.Message)"
         }
     } else {
         Write-Host "Share $shareName existiert bereits, keine Aktion erforderlich."
