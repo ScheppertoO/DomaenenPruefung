@@ -38,77 +38,194 @@ function Test-SecurityPrincipal {
     }
 }
 
+# Function to get SID from well-known identifiers
+function Get-WellKnownSID {
+    param(
+        [string]$WellKnownName
+    )
+
+    $wellKnownSIDs = @{
+        'Administrators' = 'S-1-5-32-544'
+        'System' = 'S-1-5-18'
+        'Everyone' = 'S-1-1-0'
+    }
+
+    if ($wellKnownSIDs.ContainsKey($WellKnownName)) {
+        try {
+            $sid = New-Object System.Security.Principal.SecurityIdentifier($wellKnownSIDs[$WellKnownName])
+            return @{Success=$true; SID=$sid}
+        } catch {
+            return @{Success=$false; Error=$_.Exception.Message}
+        }
+    }
+    
+    return @{Success=$false; Error="Unknown well-known SID name"}
+}
+
+# Function to get domain SID
+function Get-DomainSID {
+    try {
+        # Try to get current user's domain SID
+        $currentUserSID = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+        if ($currentUserSID) {
+            $domainSIDString = $currentUserSID.Value.Substring(0, $currentUserSID.Value.LastIndexOf("-"))
+            return @{Success=$true; DomainSID=$domainSIDString}
+        }
+    } catch {
+        Write-Warning "Could not get domain SID: $($_.Exception.Message)"
+    }
+    return @{Success=$false; Error="Could not determine domain SID"}
+}
+
+# Function to get a domain role SID
+function Get-DomainRoleSID {
+    param(
+        [string]$RoleName
+    )
+    
+    $wellKnownRoles = @{
+        'DomainAdmins' = '512'
+        'DomainUsers' = '513'
+    }
+    
+    if ($wellKnownRoles.ContainsKey($RoleName)) {
+        $domainInfo = Get-DomainSID
+        if ($domainInfo.Success) {
+            $roleSID = "$($domainInfo.DomainSID)-$($wellKnownRoles[$RoleName])"
+            try {
+                $sid = New-Object System.Security.Principal.SecurityIdentifier($roleSID)
+                return @{Success=$true; SID=$sid}
+            } catch {
+                return @{Success=$false; Error=$_.Exception.Message}
+            }
+        } else {
+            return $domainInfo
+        }
+    }
+    
+    return @{Success=$false; Error="Unknown domain role name"}
+}
+
 # Set permissions on base folder: Deaktiviere Vererbung
 $acl = Get-Acl $basePath
 $acl.SetAccessRuleProtection($true, $false) # Deaktiviert die Vererbung
 Set-Acl -Path $basePath -AclObject $acl
 
 # Restrict domain users from creating directories in Firmendaten
+# Try different approaches to get Domain Users
 $domainUsers = "$domainPrefix\Domain Users"
-$checkedUser = Test-SecurityPrincipal -Name $domainUsers
-if ($checkedUser.Success) {
+$domainUsersSID = Get-DomainRoleSID -RoleName "DomainUsers"
+
+if ($domainUsersSID.Success) {
+    Write-Host "Using Domain Users SID: $($domainUsersSID.SID.Value)"
     $denyRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-        $checkedUser.Account,
+        $domainUsersSID.SID,
         "CreateDirectories",
         [System.Security.AccessControl.InheritanceFlags]::None,
         [System.Security.AccessControl.PropagationFlags]::None,
         [System.Security.AccessControl.AccessControlType]::Deny
     )
     try {
+        $acl = Get-Acl $basePath
         $acl.AddAccessRule($denyRule)
         Set-Acl -Path $basePath -AclObject $acl
-        Write-Host "Added deny rule for $domainUsers successfully."
+        Write-Host "Added deny rule for Domain Users SID successfully."
     } catch {
-        Write-Host "Fehler beim Hinzufuegen der Deny-Regel fuer $($domainUsers): $($_.Exception.Message)"
+        Write-Host "Fehler beim Hinzufuegen der Deny-Regel fuer Domain Users SID: $($_.Exception.Message)"
     }
 } else {
-    Write-Host "Security principal '$domainUsers' could not be resolved: $($checkedUser.Error)"
+    # Try with localized names as fallbacks
+    $localizedNames = @("$domainPrefix\Domain Users", "$domainPrefix\Domänenbenutzer", "$domainPrefix\Domainbenutzer")
+    $success = $false
+    
+    foreach ($name in $localizedNames) {
+        $checkedUser = Test-SecurityPrincipal -Name $name
+        if ($checkedUser.Success) {
+            $denyRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+                $checkedUser.Account,
+                "CreateDirectories",
+                [System.Security.AccessControl.InheritanceFlags]::None,
+                [System.Security.AccessControl.PropagationFlags]::None,
+                [System.Security.AccessControl.AccessControlType]::Deny
+            )
+            try {
+                $acl = Get-Acl $basePath
+                $acl.AddAccessRule($denyRule)
+                Set-Acl -Path $basePath -AclObject $acl
+                Write-Host "Added deny rule for $name successfully."
+                $success = $true
+                break
+            } catch {
+                Write-Host "Fehler beim Hinzufuegen der Deny-Regel fuer $name: $($_.Exception.Message)"
+            }
+        }
+    }
+    
+    if (-not $success) {
+        Write-Warning "Could not restrict Domain Users from creating directories. Tried SID and localized names."
+    }
 }
 
-# Define accounts that need special handling
-$builtInAdmins = "BUILTIN\Administrators"
-$domainAdmins = "$domainPrefix\Domain Admins" 
-$systemAccount = "NT AUTHORITY\SYSTEM"
+# Get well-known SIDs
+$adminsSID = Get-WellKnownSID -WellKnownName "Administrators"
+$systemSID = Get-WellKnownSID -WellKnownName "System"
+$domainAdminsSID = Get-DomainRoleSID -RoleName "DomainAdmins"
 
-# Verify these accounts can be resolved
-$checkedAdmins = Test-SecurityPrincipal -Name $builtInAdmins
-$checkedDomAdmins = Test-SecurityPrincipal -Name $domainAdmins
-$checkedSystem = Test-SecurityPrincipal -Name $systemAccount
-
-Write-Host "Account verification results:"
-Write-Host "BUILTIN\Administrators: $($checkedAdmins.Success)"
-Write-Host "Domain Admins: $($checkedDomAdmins.Success)"
-Write-Host "SYSTEM: $($checkedSystem.Success)"
+Write-Host "Using well-known SIDs:"
+Write-Host "Administrators SID success: $($adminsSID.Success)"
+Write-Host "System SID success: $($systemSID.Success)"
+Write-Host "Domain Admins SID success: $($domainAdminsSID.Success)"
 
 # Assign permissions to DL-Gruppen
 $permissions = @(
     # Gefue-Daten
     @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-AE"; Access="Modify"},
-    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-L"; Access="ReadAndExecute"},
-    @{Path="$basePath\Gefue-Daten"; User=$systemAccount; Access="FullControl"},
-    @{Path="$basePath\Gefue-Daten"; User=$builtInAdmins; Access="FullControl"},
-    @{Path="$basePath\Gefue-Daten"; User=$domainAdmins; Access="FullControl"},
+    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-L"; Access="ReadAndExecute"}
+)
 
+# Add system permissions using SIDs if available
+if ($systemSID.Success) {
+    $permissions += @{Path="$basePath\Gefue-Daten"; UserSID=$systemSID.SID; Access="FullControl"}
+    $permissions += @{Path="$basePath\Vertrieb-Daten"; UserSID=$systemSID.SID; Access="FullControl"}
+    $permissions += @{Path="$basePath\Versand-Daten"; UserSID=$systemSID.SID; Access="FullControl"}
+    $permissions += @{Path="$basePath\Shared-Daten"; UserSID=$systemSID.SID; Access="FullControl"}
+} else {
+    # Fallback to string name
+    $permissions += @{Path="$basePath\Gefue-Daten"; User="NT AUTHORITY\SYSTEM"; Access="FullControl"}
+    $permissions += @{Path="$basePath\Vertrieb-Daten"; User="NT AUTHORITY\SYSTEM"; Access="FullControl"}
+    $permissions += @{Path="$basePath\Versand-Daten"; User="NT AUTHORITY\SYSTEM"; Access="FullControl"}
+    $permissions += @{Path="$basePath\Shared-Daten"; User="NT AUTHORITY\SYSTEM"; Access="FullControl"}
+}
+
+# Add administrators permissions using SIDs if available
+if ($adminsSID.Success) {
+    $permissions += @{Path="$basePath\Gefue-Daten"; UserSID=$adminsSID.SID; Access="FullControl"}
+    $permissions += @{Path="$basePath\Vertrieb-Daten"; UserSID=$adminsSID.SID; Access="FullControl"}
+    $permissions += @{Path="$basePath\Versand-Daten"; UserSID=$adminsSID.SID; Access="FullControl"}
+    $permissions += @{Path="$basePath\Shared-Daten"; UserSID=$adminsSID.SID; Access="FullControl"}
+}
+
+# Add domain admins permissions using SIDs if available
+if ($domainAdminsSID.Success) {
+    $permissions += @{Path="$basePath\Gefue-Daten"; UserSID=$domainAdminsSID.SID; Access="FullControl"}
+    $permissions += @{Path="$basePath\Vertrieb-Daten"; UserSID=$domainAdminsSID.SID; Access="FullControl"}
+    $permissions += @{Path="$basePath\Versand-Daten"; UserSID=$domainAdminsSID.SID; Access="FullControl"}
+    $permissions += @{Path="$basePath\Shared-Daten"; UserSID=$domainAdminsSID.SID; Access="FullControl"}
+}
+
+# Add remaining department permissions
+$permissions += @(
     # Vertrieb-Daten
     @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-L"; Access="ReadAndExecute"},
-    @{Path="$basePath\Vertrieb-Daten"; User=$systemAccount; Access="FullControl"},
-    @{Path="$basePath\Vertrieb-Daten"; User=$builtInAdmins; Access="FullControl"},
-    @{Path="$basePath\Vertrieb-Daten"; User=$domainAdmins; Access="FullControl"},
     
     # Versand-Daten
     @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-L"; Access="ReadAndExecute"},
-    @{Path="$basePath\Versand-Daten"; User=$systemAccount; Access="FullControl"},
-    @{Path="$basePath\Versand-Daten"; User=$builtInAdmins; Access="FullControl"},
-    @{Path="$basePath\Versand-Daten"; User=$domainAdmins; Access="FullControl"},
     
     # Shared-Daten
     @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Shared-Daten-AE"; Access="Modify"},
-    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Shared-Daten-L"; Access="ReadAndExecute"},
-    @{Path="$basePath\Shared-Daten"; User=$systemAccount; Access="FullControl"},
-    @{Path="$basePath\Shared-Daten"; User=$builtInAdmins; Access="FullControl"},
-    @{Path="$basePath\Shared-Daten"; User=$domainAdmins; Access="FullControl"}
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Shared-Daten-L"; Access="ReadAndExecute"}
 )
 
 foreach ($perm in $permissions) {
@@ -117,11 +234,10 @@ foreach ($perm in $permissions) {
                      [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
     $propagationFlags = [System.Security.AccessControl.PropagationFlags]::None
     
-    # Check if the user can be resolved
-    $checkedUser = Test-SecurityPrincipal -Name $perm.User
-    if ($checkedUser.Success) {
+    # Check if we're using a SID or a name
+    if ($perm.ContainsKey("UserSID")) {
         $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-            $checkedUser.Account,
+            $perm.UserSID,
             $perm.Access,
             $inheritFlags,
             $propagationFlags,
@@ -130,12 +246,31 @@ foreach ($perm in $permissions) {
         try {
             $acl.AddAccessRule($accessRule)
             Set-Acl -Path $perm.Path -AclObject $acl
-            Write-Host "Set $($perm.Access) permission for $($perm.User) on $($perm.Path)"
+            Write-Host "Set $($perm.Access) permission for SID $($perm.UserSID.Value) on $($perm.Path)"
         } catch {
-            Write-Warning "Failed to set permission for $($perm.User) on $($perm.Path): $($_.Exception.Message)"
+            Write-Warning "Failed to set permission for SID $($perm.UserSID.Value) on $($perm.Path): $($_.Exception.Message)"
         }
     } else {
-        Write-Warning "Security principal '$($perm.User)' could not be resolved: $($checkedUser.Error)"
+        # Check if the user can be resolved
+        $checkedUser = Test-SecurityPrincipal -Name $perm.User
+        if ($checkedUser.Success) {
+            $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+                $checkedUser.Account,
+                $perm.Access,
+                $inheritFlags,
+                $propagationFlags,
+                [System.Security.AccessControl.AccessControlType]::Allow
+            )
+            try {
+                $acl.AddAccessRule($accessRule)
+                Set-Acl -Path $perm.Path -AclObject $acl
+                Write-Host "Set $($perm.Access) permission for $($perm.User) on $($perm.Path)"
+            } catch {
+                Write-Warning "Failed to set permission for $($perm.User) on $($perm.Path): $($_.Exception.Message)"
+            }
+        } else {
+            Write-Warning "Security principal '$($perm.User)' could not be resolved: $($checkedUser.Error)"
+        }
     }
 }
 
