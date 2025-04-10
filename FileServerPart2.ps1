@@ -53,18 +53,30 @@ $permissions = @(
     # Gefue-Daten
     @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\DL-Gefue-Daten-L"; Access="ReadAndExecute"},
-    
+    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\SYSTEM"; Access="FullControl"}
+    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\BUILTIN\Administrators"; Access="FullControl"}
+    @{Path="$basePath\Gefue-Daten"; User="$domainPrefix\Domain Admins"; Access="FullControl"}
+
     # Vertrieb-Daten
     @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\DL-Vertrieb-Daten-L"; Access="ReadAndExecute"},
+    @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\SYSTEM"; Access="FullControl"}
+    @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\BUILTIN\Administrators"; Access="FullControl"}
+    @{Path="$basePath\Vertrieb-Daten"; User="$domainPrefix\Domain Admins"; Access="FullControl"}
     
     # Versand-Daten
     @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Versand-Daten"; User="$domainPrefix\DL-Versand-Daten-L"; Access="ReadAndExecute"},
+    @{Path="$basePath\Versand-Daten"; User="$domainPrefix\SYSTEM"; Access="FullControl"}
+    @{Path="$basePath\Versand-Daten"; User="$domainPrefix\BUILTIN\Administrators"; Access="FullControl"}
+    @{Path="$basePath\Versand-Daten"; User="$domainPrefix\Domain Admins"; Access="FullControl"}
     
     # Shared-Daten
     @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Shared-Daten-AE"; Access="Modify"},
     @{Path="$basePath\Shared-Daten"; User="$domainPrefix\DL-Shared-Daten-L"; Access="ReadAndExecute"}
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\SYSTEM"; Access="FullControl"}
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\BUILTIN\Administrators"; Access="FullControl"}
+    @{Path="$basePath\Shared-Daten"; User="$domainPrefix\Domain Admins"; Access="FullControl"}
 )
 
 foreach ($perm in $permissions) {
@@ -83,6 +95,7 @@ foreach ($perm in $permissions) {
     Set-Acl -Path $perm.Path -AclObject $acl
     Write-Host "Set $($perm.Access) permission for $($perm.User) on $($perm.Path)"
 }
+# Admins und SYSTEM Ei
 
 # Erstelle SMB-Freigaben für die Unterordner in Firmendaten (ohne $basePath und $homePath)
 $baseSubFolders = @(

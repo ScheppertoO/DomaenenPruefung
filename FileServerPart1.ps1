@@ -6,7 +6,7 @@ $fsCredential = New-Object PSCredential ($fsUser, $securePassword) #>
 
 Write-Host " Starte Netzwerkkonfiguration fuer Fileserver..."
 
-$oldName = "Ethernet"
+$oldName = Read-Host "Gib den genauen des noch Unkonfigurierten Ethernet Adapters an fuers Business" #"Ethernet" 
 $newName = "BUSINESS-NIC"
 $ipAddress = "192.168.200.11"
 $prefix = 24
@@ -51,7 +51,7 @@ start-sleep 15
 # Domaenenbeitritt
 Write-Host " Trete der Domaene $domainName bei..."
 Add-Computer -DomainName $domainName -Credential $domainCredential -Force
-#Keine Eingabe = Wartet Eingabe = Neustart Abbrechen = Stoppe einfach das skript (STRG + C)
+#Keine Eingabe = Wartet | Eingabe = Neustart | Abbrechen = Stoppe einfach das skript (STRG + C)
 Write-Host " Domaenenbeitritt abgeschlossen. Neustart wird durchgefuehrt..."
 Read-Host "Jetzt Neustarten, weiter mit Enter"
 Restart-Computer
