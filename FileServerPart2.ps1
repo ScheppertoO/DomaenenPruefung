@@ -10,7 +10,10 @@ $folders = @(
     "$basePath\Vertrieb-Daten",
     "$basePath\Versand-Daten",
     "$basePath\Shared-Daten",
-    $homePath
+    $homePath,
+    "$homepath\Olaf.Oben",
+    "$homepath\Ute.Unten",
+    "$homepath\Max.Mitte"
 )
 
 # Create folder structure
@@ -197,6 +200,7 @@ if ($systemSID.Success) {
     $permissions += @{Path="$basePath\Shared-Daten"; User="NT AUTHORITY\SYSTEM"; Access="FullControl"}
 }
 
+
 # Add administrators permissions using SIDs if available
 if ($adminsSID.Success) {
     $permissions += @{Path="$basePath\Gefue-Daten"; UserSID=$adminsSID.SID; Access="FullControl"}
@@ -274,12 +278,19 @@ foreach ($perm in $permissions) {
     }
 }
 
+
+
 # Erstelle SMB-Freigaben fuer die Unterordner in Firmendaten (ohne $basePath und $homePath)
-$baseSubFolders = @(
+<# $baseSubFolders = @(
     "$basePath\Gefue-Daten",
     "$basePath\Vertrieb-Daten",
     "$basePath\Versand-Daten",
-    "$basePath\Shared-Daten"
+    "$basePath\Shared-Daten",
+    $homePath,
+    "$homePath\Ute.Unten",
+    "$homePath\Olaf.Oben",
+    "$homePath\Max.Mitte"
+
 )
 
 foreach ($folder in $baseSubFolders) {
@@ -308,6 +319,57 @@ foreach ($folder in $baseSubFolders) {
         Write-Host "Share $shareName existiert bereits, keine Aktion erforderlich."
     }
 }
+#>
 
+#==========================================================================================================================================================================
+#                                                                                            ChatGPTs Lösung für die SMB-Share funktionen 
+#==========================================================================================================================================================================
+$fullAccessArray = @(
+    "Everyone", 
+    "$domainPrefix\Domain Admins", 
+    "NT AUTHORITY\SYSTEM", 
+    "BUILTIN\Administrators"
+)
 
+foreach ($folder in $folders) {
+    # Falls der Ordner nicht existiert, überspringe ihn
+    if (-not (Test-Path -Path $folder)) {
+        Write-Host "Ordner $folder existiert nicht, überspringe..."
+        continue
+    }
+    
+    # Setze den Freigabenamen:
+    # - Homeordner bekommt explizit den Namen "Home$"
+    # - Alle anderen erhalten ihren Ordnernamen als Freigabe
+    if ($folder -eq $homePath) {
+        $shareName = "Home$"
+    }
+    else {
+        $shareName = Split-Path $folder -Leaf
+    }
 
+    # Wenn es sich um den Firmendatenordner ($basePath) handelt, aktiviere die zugriffsbasierte Aufzählung.
+    $extraParams = @{}
+    if ($folder -eq $basePath) {
+        $extraParams["FolderEnumerationMode"] = "AccessBased"
+    }
+
+    # Prüfen, ob das SMB-Share bereits existiert.
+    if (-not (Get-SmbShare -Name $shareName -ErrorAction SilentlyContinue)) {
+        try {
+            if ($extraParams.Count -gt 0) {
+                New-SmbShare -Name $shareName -Path $folder -FullAccess $fullAccessArray -FolderEnumerationMode $extraParams["FolderEnumerationMode"]
+            }
+            else {
+                New-SmbShare -Name $shareName -Path $folder -FullAccess $fullAccessArray
+            }
+            Write-Host "Freigabe erstellt: $shareName für $folder"
+        }
+        catch {
+            Write-Host "Fehler beim Erstellen der Freigabe $shareName für $($folder): $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+    else {
+        Write-Host "Freigabe $shareName existiert bereits, keine Aktion erforderlich."
+    }
+}

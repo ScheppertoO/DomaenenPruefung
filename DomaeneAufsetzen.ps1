@@ -156,7 +156,7 @@ Invoke-Command -Session $session -ScriptBlock {
         -InterfaceAlias $newName1 `
         -ResetServerAddresses -ErrorAction SilentlyContinue
 
-    Write-Host "🧹 DNS auf $newName1 entfernt"
+    Write-Host " DNS auf $newName1 entfernt"
 }
 $weiter = Read-Host "Pruefe die IP einstellungen aller Netzwerkadapter, ggf DC nicht funktionsfertig. Weiter mit "j""
 if ($weiter.ToLower() -ne 'j') {
