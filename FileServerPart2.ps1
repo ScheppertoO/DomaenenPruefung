@@ -1,3 +1,4 @@
+Import-Module ActiveDirectory -ErrorAction Stop
 # Dynamisch den Domainnamen und den Servernamen ermitteln
 $domainPrefix = $env:USERDOMAIN
 
@@ -138,7 +139,7 @@ if ($domainUsersSID.Success) {
     }
 } else {
     # Try with localized names as fallbacks
-    $localizedNames = @("$domainPrefix\Domain Users", "$domainPrefix\Domänenbenutzer", "$domainPrefix\Domainbenutzer")
+    $localizedNames = @("$domainPrefix\Domain Users", "$domainPrefix\Domaenenbenutzer", "$domainPrefix\Domainbenutzer")
     $success = $false
     
     foreach ($name in $localizedNames) {
@@ -322,54 +323,117 @@ foreach ($folder in $baseSubFolders) {
 #>
 
 #==========================================================================================================================================================================
-#                                                                                            ChatGPTs Lösung für die SMB-Share funktionen 
+#                                                                                            ChatGPTs Loesung fuer die SMB-Share funktionen 
 #==========================================================================================================================================================================
-$fullAccessArray = @(
-    "Everyone", 
-    "$domainPrefix\Domain Admins", 
-    "NT AUTHORITY\SYSTEM", 
-    "BUILTIN\Administrators"
-)
+# Stelle sicher, dass das AD-Modul geladen ist
+#Import-Module ActiveDirectory -ErrorAction Stop
 
-foreach ($folder in $folders) {
-    # Falls der Ordner nicht existiert, überspringe ihn
-    if (-not (Test-Path -Path $folder)) {
-        Write-Host "Ordner $folder existiert nicht, überspringe..."
-        continue
-    }
-    
-    # Setze den Freigabenamen:
-    # - Homeordner bekommt explizit den Namen "Home$"
-    # - Alle anderen erhalten ihren Ordnernamen als Freigabe
-    if ($folder -eq $homePath) {
-        $shareName = "Home$"
-    }
-    else {
-        $shareName = Split-Path $folder -Leaf
-    }
+# Konfiguration: Fileserver, Homefolder Share, lokale Basis
+$fileserver     = $env:COMPUTERNAME            # Hier den tatsaechlichen Fileservernamen eintragen
+$homeShareName  = "Home$"                   # Freigabenamen; mit $ als versteckt
+$homeRootLocal  = "E:\Home"                 # Lokaler Pfad, in dem die Homefolder erstellt werden
+$homeDriveLetter = "H:"                    # Laufwerksbuchstabe fuer den Homefolder
 
-    # Wenn es sich um den Firmendatenordner ($basePath) handelt, aktiviere die zugriffsbasierte Aufzählung.
-    $extraParams = @{}
-    if ($folder -eq $basePath) {
-        $extraParams["FolderEnumerationMode"] = "AccessBased"
-    }
+# Hole alle Benutzer aus einer bestimmten OU (anpassen!)
+$users = Get-ADUser -Filter * -SearchBase "OU=Users,DC=domain,DC=dom"
 
-    # Prüfen, ob das SMB-Share bereits existiert.
-    if (-not (Get-SmbShare -Name $shareName -ErrorAction SilentlyContinue)) {
+foreach ($user in $users) {
+    $username = $user.SamAccountName
+
+    # Lokalen Pfad fuer den Homefolder des Benutzers erstellen
+    $userHomeFolderLocal = Join-Path $homeRootLocal $username
+
+    # UNC-Pfad fuer den Homefolder, der in AD gesetzt wird
+    $userHomeFolderUNC = "\\$fileserver\$homeShareName\$username"
+
+    # Homefolder anlegen, falls er noch nicht existiert
+    if (-not (Test-Path -Path $userHomeFolderLocal)) {
         try {
-            if ($extraParams.Count -gt 0) {
-                New-SmbShare -Name $shareName -Path $folder -FullAccess $fullAccessArray -FolderEnumerationMode $extraParams["FolderEnumerationMode"]
-            }
-            else {
-                New-SmbShare -Name $shareName -Path $folder -FullAccess $fullAccessArray
-            }
-            Write-Host "Freigabe erstellt: $shareName für $folder"
+            New-Item -Path $userHomeFolderLocal -ItemType Directory | Out-Null
+            Write-Host "Erstellt: Homefolder fuer Benutzer $username unter $userHomeFolderLocal"
         }
         catch {
-            Write-Host "Fehler beim Erstellen der Freigabe $shareName für $($folder): $($_.Exception.Message)" -ForegroundColor Red
+            Write-Warning "Fehler beim Erstellen des Homefolders fuer $username $($_.Exception.Message)"
+            continue
         }
     }
     else {
-        Write-Host "Freigabe $shareName existiert bereits, keine Aktion erforderlich."
+        Write-Host "Homefolder fuer $username existiert bereits."
+    }
+
+    # ------------------------------- 
+    # Optional: NTFS-Berechtigungen setzen
+    # -------------------------------
+    try {
+        # Lade die aktuelle ACL des Benutzerordners
+        $acl = Get-Acl $userHomeFolderLocal
+
+        # Setze die Vererbung aus, sodass nur die explizit gesetzten ACEs gelten
+        $acl.SetAccessRuleProtection($true, $false)
+
+        # Erstelle eine Zugriffsregel fuer den Benutzer
+        $userRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            "$($user.DistinguishedName)" -replace '^CN=.*?,', "$env:USERDOMAIN\$username",
+            "FullControl",
+            [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
+            [System.Security.AccessControl.PropagationFlags]::None,
+            [System.Security.AccessControl.AccessControlType]::Allow
+        )
+        # Alternative: Direkte Namensangabe, falls $env:USERDOMAIN und $username passen:
+        # $userRule = New-Object System.Security.AccessControl.FileSystemAccessRule("$env:USERDOMAIN\$username", "FullControl",
+        #              [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
+        #              [System.Security.AccessControl.PropagationFlags]::None,
+        #              [System.Security.AccessControl.AccessControlType]::Allow)
+
+        # Zugriffsregel fuer Domain Admins
+        $domainAdminsRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            "$env:USERDOMAIN\Domain Admins",
+            "FullControl",
+            [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
+            [System.Security.AccessControl.PropagationFlags]::None,
+            [System.Security.AccessControl.AccessControlType]::Allow
+        )
+
+        # Zugriffsregel fuer SYSTEM
+        $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            "NT AUTHORITY\SYSTEM",
+            "FullControl",
+            [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
+            [System.Security.AccessControl.PropagationFlags]::None,
+            [System.Security.AccessControl.AccessControlType]::Allow
+        )
+
+        # Zugriffsregel fuer lokale Administratoren
+        $adminsRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            "BUILTIN\Administrators",
+            "FullControl",
+            [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
+            [System.Security.AccessControl.PropagationFlags]::None,
+            [System.Security.AccessControl.AccessControlType]::Allow
+        )
+
+        # Alle Regeln hinzufuegen
+        $acl.AddAccessRule($userRule)
+        $acl.AddAccessRule($domainAdminsRule)
+        $acl.AddAccessRule($systemRule)
+        $acl.AddAccessRule($adminsRule)
+
+        # Setze die aktualisierte ACL zurueck auf den Ordner
+        Set-Acl -Path $userHomeFolderLocal -AclObject $acl
+        Write-Host "NTFS-Berechtigungen fuer $userHomeFolderLocal gesetzt."
+    }
+    catch {
+        Write-Warning "Fehler beim Setzen der NTFS-Berechtigungen fuer $userHomeFolderLocal $($_.Exception.Message)"
+    }
+
+    # ------------------------------- 
+    # AD-Attribute des Benutzers aktualisieren
+    # ------------------------------- 
+    try {
+        Set-ADUser $user -HomeDirectory $userHomeFolderUNC -HomeDrive $homeDriveLetter
+        Write-Host "AD-Eintrag fuer $username aktualisiert: HomeDirectory = $userHomeFolderUNC, HomeDrive = $homeDriveLetter"
+    }
+    catch {
+        Write-Warning "Fehler beim Setzen der AD-Attribute fuer $username $($_.Exception.Message)"
     }
 }
