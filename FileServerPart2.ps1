@@ -117,7 +117,7 @@ Set-Acl -Path $basePath -AclObject $acl
 
 # Restrict domain users from creating directories in Firmendaten
 # Try different approaches to get Domain Users
-$domainUsers = "$domainPrefix\Domain Users"
+#$domainUsers = "$domainPrefix\Domain Users"
 $domainUsersSID = Get-DomainRoleSID -RoleName "DomainUsers"
 
 if ($domainUsersSID.Success) {
@@ -364,67 +364,68 @@ foreach ($user in $users) {
     # ------------------------------- 
     # Optional: NTFS-Berechtigungen setzen
     # -------------------------------
-    try {
-        # Lade die aktuelle ACL des Benutzerordners
-        $acl = Get-Acl $userHomeFolderLocal
+   # Vorher: $user enthält bereits den AD-Benutzer aus deiner Benutzerschleife.
+# Hole den AD-Benutzer mit der SID (sofern noch nicht erfolgt)
+$adUserObject = Get-ADUser $user -Properties SID
+$userSID = $adUserObject.SID  # Dies ist vom Typ System.Security.Principal.SecurityIdentifier
 
-        # Setze die Vererbung aus, sodass nur die explizit gesetzten ACEs gelten
-        $acl.SetAccessRuleProtection($true, $false)
+try {
+    # Lade die aktuelle ACL des Benutzerordners
+    $acl = Get-Acl $userHomeFolderLocal
 
-        # Erstelle eine Zugriffsregel fuer den Benutzer
-        $userRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-            "$($user.DistinguishedName)" -replace '^CN=.*?,', "$env:USERDOMAIN\$username",
-            "FullControl",
-            [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
-            [System.Security.AccessControl.PropagationFlags]::None,
-            [System.Security.AccessControl.AccessControlType]::Allow
-        )
-        # Alternative: Direkte Namensangabe, falls $env:USERDOMAIN und $username passen:
-        # $userRule = New-Object System.Security.AccessControl.FileSystemAccessRule("$env:USERDOMAIN\$username", "FullControl",
-        #              [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
-        #              [System.Security.AccessControl.PropagationFlags]::None,
-        #              [System.Security.AccessControl.AccessControlType]::Allow)
+    # Deaktiviere die Vererbung (damit nur die explizit gesetzten Berechtigungen gelten)
+    $acl.SetAccessRuleProtection($true, $false)
 
-        # Zugriffsregel fuer Domain Admins
-        $domainAdminsRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-            "$env:USERDOMAIN\Domain Admins",
-            "FullControl",
-            [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
-            [System.Security.AccessControl.PropagationFlags]::None,
-            [System.Security.AccessControl.AccessControlType]::Allow
-        )
+    # Erstelle die Zugriffsregel für den Benutzer direkt anhand des SID-Objekts
+    $userRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        $userSID,
+        "FullControl",
+        [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
+        [System.Security.AccessControl.PropagationFlags]::None,
+        [System.Security.AccessControl.AccessControlType]::Allow
+    )
 
-        # Zugriffsregel fuer SYSTEM
-        $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-            "NT AUTHORITY\SYSTEM",
-            "FullControl",
-            [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
-            [System.Security.AccessControl.PropagationFlags]::None,
-            [System.Security.AccessControl.AccessControlType]::Allow
-        )
+    # Zugriffsregel für Domain Admins (als NT-Account, hier solltest du sicherstellen, dass der Name korrekt ist)
+    $domainAdminsRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        "$env:USERDOMAIN\Domain Admins",
+        "FullControl",
+        [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
+        [System.Security.AccessControl.PropagationFlags]::None,
+        [System.Security.AccessControl.AccessControlType]::Allow
+    )
 
-        # Zugriffsregel fuer lokale Administratoren
-        $adminsRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-            "BUILTIN\Administrators",
-            "FullControl",
-            [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
-            [System.Security.AccessControl.PropagationFlags]::None,
-            [System.Security.AccessControl.AccessControlType]::Allow
-        )
+    # Zugriffsregel für SYSTEM
+    $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        "NT AUTHORITY\SYSTEM",
+        "FullControl",
+        [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
+        [System.Security.AccessControl.PropagationFlags]::None,
+        [System.Security.AccessControl.AccessControlType]::Allow
+    )
 
-        # Alle Regeln hinzufuegen
-        $acl.AddAccessRule($userRule)
-        $acl.AddAccessRule($domainAdminsRule)
-        $acl.AddAccessRule($systemRule)
-        $acl.AddAccessRule($adminsRule)
+    # Zugriffsregel für lokale Administratoren (achte auf die korrekte Schreibweise: auf deutsch meist "BUILTIN\Administratoren")
+    $adminsRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        "BUILTIN\Administratoren",
+        "FullControl",
+        [System.Security.AccessControl.InheritanceFlags]::ContainerInherit,
+        [System.Security.AccessControl.PropagationFlags]::None,
+        [System.Security.AccessControl.AccessControlType]::Allow
+    )
 
-        # Setze die aktualisierte ACL zurueck auf den Ordner
-        Set-Acl -Path $userHomeFolderLocal -AclObject $acl
-        Write-Host "NTFS-Berechtigungen fuer $userHomeFolderLocal gesetzt."
-    }
-    catch {
-        Write-Warning "Fehler beim Setzen der NTFS-Berechtigungen fuer $userHomeFolderLocal $($_.Exception.Message)"
-    }
+    # Alle Regeln hinzufügen
+    $acl.AddAccessRule($userRule)
+    $acl.AddAccessRule($domainAdminsRule)
+    $acl.AddAccessRule($systemRule)
+    $acl.AddAccessRule($adminsRule)
+
+    # Die aktualisierte ACL zurück auf den Ordner setzen
+    Set-Acl -Path $userHomeFolderLocal -AclObject $acl
+    Write-Host "NTFS-Berechtigungen für $userHomeFolderLocal gesetzt."
+}
+catch {
+    Write-Warning "Fehler beim Setzen der NTFS-Berechtigungen für $($userHomeFolderLocal): $($_.Exception.Message)"
+}
+
 
     # ------------------------------- 
     # AD-Attribute des Benutzers aktualisieren
