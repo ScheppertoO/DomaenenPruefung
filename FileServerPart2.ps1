@@ -19,15 +19,27 @@ $folders = @(
     "$basePath\Gefue-Daten",
     "$basePath\Vertrieb-Daten",
     "$basePath\Versand-Daten",
-    "$basePath\Shared-Daten",
-    $homePath,
-    "$homepath\Olaf.Oben",
-    "$homepath\Ute.Unten",
-    "$homepath\Max.Mitte"
+    "$basePath\Shared-Daten"
+    <#$homePath,
+    "$homePath\Olaf.Oben",  # Fixed: Corrected capitalization from $homepath to $homePath
+    "$homePath\Ute.Unten",  # Fixed: Corrected capitalization from $homepath to $homePath
+    "$homePath\Max.Mitte"   # Fixed: Corrected capitalization from $homepath to $homePath #>
 )
 
 # Create folder structure
 foreach ($folder in $folders) {
+    # Skip the home root folder but create all other folders
+    if ($folder -eq $homePath) {
+        # Make sure home folder exists since we need to create user folders in it
+        if (-not (Test-Path -Path $folder)) {
+            New-Item -Path $folder -ItemType Directory | Out-Null
+            Write-Host "Created required home folder: $folder"
+        } else {
+            Write-Host "Home folder already exists: $folder"
+        }
+        continue
+    }
+    
     if (-not (Test-Path -Path $folder)) {
         New-Item -Path $folder -ItemType Directory | Out-Null
         Write-Host "Created folder: $folder"
@@ -220,13 +232,13 @@ if ($adminsSID.Success) {
 }
 
 # Add domain admins permissions using SIDs if available
-if ($domainAdminsSID.Success) {
+<#if ($domainAdminsSID.Success) {
     $permissions += @{Path="$basePath\Gefue-Daten"; UserSID=$domainAdminsSID.SID; Access="FullControl"}
     $permissions += @{Path="$basePath\Vertrieb-Daten"; UserSID=$domainAdminsSID.SID; Access="FullControl"}
     $permissions += @{Path="$basePath\Versand-Daten"; UserSID=$domainAdminsSID.SID; Access="FullControl"}
     $permissions += @{Path="$basePath\Shared-Daten"; UserSID=$domainAdminsSID.SID; Access="FullControl"}
 }
-
+#>
 # Add remaining department permissions
 $permissions += @(
     # Vertrieb-Daten
@@ -336,7 +348,7 @@ $homeRootLocal  = "E:\Home"                 # Lokaler Pfad, in dem die Homefolde
 $homeDriveLetter = "H:"                    # Laufwerksbuchstabe fuer den Homefolder
 
 # Nur diese spezifischen Benutzer sollen Homefolders bekommen
-$allowedUsers = @("max.mitte", "ute.unten", "olaf.oben")
+#$allowedUsers = @("max.mitte", "ute.unten", "olaf.oben")
 
 # Hole nur die explizit erlaubten Benutzer mit einem präziseren Filter
 $users = Get-ADUser -Filter "SamAccountName -eq 'max.mitte' -or SamAccountName -eq 'ute.unten' -or SamAccountName -eq 'olaf.oben'"
@@ -350,18 +362,19 @@ foreach ($user in $users) {
     # UNC-Pfad fuer den Homefolder, der in AD gesetzt wird
     $userHomeFolderUNC = "\\$fileserver\$homeShareName\$username"
     
-# Homefolder anlegen, falls er noch nicht existiert
-if (-not (Test-Path -Path $userHomeFolderLocal)) {
-    try {
-        New-Item -Path $userHomeFolderLocal -ItemType Directory | Out-Null
-        Write-Host "Erstellt: Homefolder fuer Benutzer $username unter $userHomeFolderLocal"
-    } catch {
-        Write-Warning "Fehler beim Erstellen des Homefolders fuer $username $($_.Exception.Message)"
-        continue
+    # Homefolder anlegen, falls er noch nicht existiert
+    if (-not (Test-Path -Path $userHomeFolderLocal)) {
+        try {
+            New-Item -Path $userHomeFolderLocal -ItemType Directory | Out-Null
+            Write-Host "Erstellt: Homefolder fuer Benutzer $username unter $userHomeFolderLocal"
+        } catch {
+            Write-Warning "Fehler beim Erstellen des Homefolders fuer $username $($_.Exception.Message)"
+            continue
+        }
+    } else {
+        Write-Host "Homefolder fuer $username existiert bereits."
     }
-} else {
-    Write-Host "Homefolder fuer $username existiert bereits."
-}
+    
     # ------------------------------- 
     # Optional: NTFS-Berechtigungen setzen
     # -------------------------------
@@ -369,8 +382,13 @@ if (-not (Test-Path -Path $userHomeFolderLocal)) {
         # Lade die aktuelle ACL des Benutzerordners
         $acl = Get-Acl $userHomeFolderLocal
 
-        # Deaktiviere die Vererbung (damit nur die explizit gesetzten Berechtigungen gelten)
+        # Deaktiviere die Vererbung und entferne alle geerbten Berechtigungen
         $acl.SetAccessRuleProtection($true, $false)
+        
+        # Entferne alle bestehenden Berechtigungen
+        foreach ($accessRule in $acl.Access) {
+            $acl.RemoveAccessRule($accessRule) | Out-Null
+        }
 
         # Berechne die Vererbungsflags im Voraus
         $inheritanceFlags = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
@@ -403,7 +421,7 @@ if (-not (Test-Path -Path $userHomeFolderLocal)) {
             [System.Security.AccessControl.AccessControlType]::Allow
         )
 
-        # Alle Regeln hinzufügen
+        # Füge nur die gewünschten Regeln hinzu (Domain Users nicht einschließen)
         $acl.AddAccessRule($userRule)
         $acl.AddAccessRule($systemRule)
         $acl.AddAccessRule($adminsRule)
@@ -433,11 +451,11 @@ if (-not (Test-Path -Path $userHomeFolderLocal)) {
     # ------------------------------- 
     # AD-Attribute des Benutzers aktualisieren
     # ------------------------------- 
-        try {
-            Set-ADUser $user -HomeDirectory $userHomeFolderUNC -HomeDrive $homeDriveLetter
-            Write-Host "AD-Eintrag fuer $username aktualisiert: HomeDirectory = $userHomeFolderUNC, HomeDrive = $homeDriveLetter"
-        }
-        catch {
-            Write-Warning "Fehler beim Setzen der AD-Attribute fuer $username $($_.Exception.Message)"
-        }
+    try {
+        Set-ADUser $user -HomeDirectory $userHomeFolderUNC -HomeDrive $homeDriveLetter
+        Write-Host "AD-Eintrag fuer $username aktualisiert: HomeDirectory = $userHomeFolderUNC, HomeDrive = $homeDriveLetter"
     }
+    catch {
+        Write-Warning "Fehler beim Setzen der AD-Attribute fuer $username $($_.Exception.Message)"
+    }
+}
